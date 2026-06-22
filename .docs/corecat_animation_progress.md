@@ -78,6 +78,18 @@
 - [x] 精细化 UI 卡片样式控制：调整 `src/styles/core-ui.css` 中 `.cwp-module-illust-bg` 卡片底图的定位与缩放规则，增加 `object-fit: contain` 和 `image-rendering: pixelated` 样式属性，防止背景图在大屏或不同主题下产生拉伸变形，保证像素细节颗粒分明。
 - [x] 静态构建与 UI 遍历验证：运行 `npm run build` 全绿打包，并且通过浏览器子代验证在工坊主界面与各个详情弹窗下完美对齐显示。
 
+## 已完成任务 (关于页面重构与代码仓库上传部分)
+
+- [x] 工作投入度评估介绍：重写了关于页面顶部的 CoreWorkPal 桌面伙伴产品介绍，新增了“工作投入度与专注度评估”的功能说明，说明如何利用硬件资源状态对用户的专注与投入度进行智能反馈。
+- [x] 关于页面布局重构：移除了原有的 8 个关于 CPU、GPU、RAM、NET、TEMP、DISK 和零件、灵感来源的详细监控参数描述卡片。
+- [x] 开源 Git 仓库模块集成：在关于页面底部增加了精美的“开源项目仓库 (Git Repository)”卡片，直接展示项目地址 `https://github.com/FiveDayZ/CoreWorkPal.git`，并提供了一键“复制地址”到系统剪贴板的功能。
+- [x] 页面高度自适应调整：修改 `.cwp-about-hero` 样式由固定 `height: 80px` 变更为 `min-height: 80px`，防止新增文本较长时产生底部文字截断，排版显示极其清爽完整。
+- [x] 全量项目上传 Git 仓库：
+  - 更新根目录 `.gitignore`，将 `.tmp/` 和 `.codegraph/` 过滤排除。
+  - 在项目根目录下初始化 Git 仓库，自动暂存并提交所有项目源码。
+  - 添加了远程 GitHub 地址：`https://github.com/FiveDayZ/CoreWorkPal.git`。
+  - 配置了局域网 Git Proxy 路由，成功将项目整体全量推送上传至 GitHub 主干仓库 `main` 分支。
+
 ## 可执行文件位置
 `src-tauri/target/release/core-work-pal.exe`
 
