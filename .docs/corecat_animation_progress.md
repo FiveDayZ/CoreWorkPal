@@ -110,5 +110,17 @@
 
 - [x] 调整项目 Git 中的 README 描述：清理中英混杂的现象，保留清晰纯粹的中文描述，移除了所有非必要的英文解释与词汇，将硬件指标、开发步骤等术语统一规范为中文表达，并简化了技术架构图和项目结构的英文标注。
 
+## 已完成任务 (内存占用优化部分)
+
+- [x] 分析 WebView2 内存瓶颈：定位原因为 21 张动画雪碧图为 5760x5760 像素，导致解码后的 RGBA 像素数据占用过多内存（单张达 126.56 MB，React 预载引发 500+ MB 的开销）。
+- [x] 等比下调雪碧图分辨率：使用 PIL (Nearest-Neighbor 算法) 将 21 张 WebP 雪碧图从 5760x5760 缩小至 1280x1280 (每帧从 720x720 降至 160x160)，解码内存占用直接骤降 94.8%（单张降至 6.55 MB）。
+- [x] 等比转换 JSON 坐标：同步修改 21 个 `.json` 配置文件，将 frames 坐标等比乘以 2/9 转换为整数值，完全无损映射。
+- [x] 优化 CSS 像素渲染模式：将 `CoreCat.tsx` 的 Sprite inline style 中 `imageRendering` 改为 `pixelated`，确保在 Retina/高 DPI 屏幕上缩放时，宠物边缘依然清晰锐利，保留经典像素风。
+- [x] 运行本地单元测试与静态构建测试：`npm run test:corecat` 与 `npm run build` 打包测试顺利通过。
+- [x] 阻止程序在无窗口时退出：在 `lib.rs` 中全局拦截 `ExitRequested` 事件并阻止退出，确保所有窗口关闭后，托盘图标程序仍在后台工作。
+- [x] 实现窗口隐藏即物理销毁：在 `hide_window` 中对 `"main"`、`"pet"`、`"monitor-bar"` 和 `"pet-panel"` 窗口调用 `.close()`，彻底终止对应的渲染进程并回收其内存。
+- [x] 实现 DPI 缩放敏感的位置还原：在 `ensure_webview_window` 中对重建的 `"pet-panel"` 进行物理 DPI 缩放敏感的坐标计算，使其即使在重建后也能完美无缝地弹在悬浮猫咪旁。
+- [x] 修复嵌套 Tokio Runtime 崩溃 Bug：使用 `RwLock::blocking_read()` 代替 `block_on` 异步读取 AppState，消除了多线程环境下的崩溃隐患。
+
 ## 可执行文件位置
 `src-tauri/target/release/core-work-pal.exe`

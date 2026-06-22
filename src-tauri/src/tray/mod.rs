@@ -90,9 +90,11 @@ pub fn setup_tray(app: &App) -> tauri::Result<()> {
 
             if should_show_main {
                 let app = tray.app_handle().clone();
-                if let Err(error) = show_main_route(&app, "dashboard") {
-                    tracing::warn!("failed to open main window from tray icon: {error}");
-                }
+                tauri::async_runtime::spawn(async move {
+                    if let Err(error) = show_main_route(&app, "dashboard").await {
+                        tracing::warn!("failed to open main window from tray icon: {error}");
+                    }
+                });
             }
         });
 
@@ -105,19 +107,28 @@ pub fn setup_tray(app: &App) -> tauri::Result<()> {
 fn handle_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
     match event.id().as_ref() {
         MENU_OPEN_MAIN => {
-            if let Err(error) = show_main_route(app, "dashboard") {
-                tracing::warn!("failed to open main window from tray: {error}");
-            }
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = show_main_route(&app, "dashboard").await {
+                    tracing::warn!("failed to open main window from tray: {error}");
+                }
+            });
         }
         MENU_OPEN_SETTINGS => {
-            if let Err(error) = show_main_route(app, "settings") {
-                tracing::warn!("failed to open settings from tray: {error}");
-            }
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = show_main_route(&app, "settings").await {
+                    tracing::warn!("failed to open settings from tray: {error}");
+                }
+            });
         }
         MENU_OPEN_ABOUT => {
-            if let Err(error) = show_main_route(app, "about") {
-                tracing::warn!("failed to open about from tray: {error}");
-            }
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = show_main_route(&app, "about").await {
+                    tracing::warn!("failed to open about from tray: {error}");
+                }
+            });
         }
         MENU_TOGGLE_CAT => {
             let app = app.clone();
@@ -150,16 +161,16 @@ fn handle_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
     }
 }
 
-fn show_main_route(app: &AppHandle, route: &str) -> Result<(), String> {
-    window_manager::show_window(app, "main", true)?;
+async fn show_main_route(app: &AppHandle, route: &str) -> Result<(), String> {
+    window_manager::show_window(app, "main", true).await?;
     app.emit("ui:navigate-main", route)
         .map_err(|error| format!("failed to emit ui:navigate-main: {error}"))
 }
 
 async fn toggle_cat_visibility(app: AppHandle) -> Result<(), String> {
-    let is_cat_visible = window_manager::toggle_window(&app, "pet")?;
+    let is_cat_visible = window_manager::toggle_window(&app, "pet").await?;
     if !is_cat_visible {
-        window_manager::hide_window(&app, "pet-panel")?;
+        window_manager::hide_window(&app, "pet-panel").await?;
     }
 
     apply_settings_patch(
@@ -174,7 +185,7 @@ async fn toggle_cat_visibility(app: AppHandle) -> Result<(), String> {
 }
 
 async fn toggle_monitor_visibility(app: AppHandle) -> Result<(), String> {
-    let is_monitor_bar_visible = window_manager::toggle_window(&app, "monitor-bar")?;
+    let is_monitor_bar_visible = window_manager::toggle_window(&app, "monitor-bar").await?;
 
     apply_settings_patch(
         &app,

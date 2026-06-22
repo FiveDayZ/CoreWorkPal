@@ -290,7 +290,7 @@ export function CoreCat({
             height: spriteFrameStyle?.height ?? 160,
             position: "relative",
             zIndex: 2,
-            imageRendering: "auto",
+            imageRendering: "pixelated",
             transformOrigin: "bottom center",
             opacity: staticMode ? 1 : poseOpacity,
             transform: staticMode

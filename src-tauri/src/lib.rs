@@ -61,8 +61,13 @@ pub fn run() {
             commands::exit_app,
             commands::update_workshop_state
         ])
-        .run(tauri::generate_context!())
-        .expect("failed to run CoreWorkPal application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                api.prevent_exit();
+            }
+        });
 }
 
 async fn apply_saved_visibility(app: &tauri::AppHandle) {
@@ -72,18 +77,18 @@ async fn apply_saved_visibility(app: &tauri::AppHandle) {
     let settings = state.settings.read().await.clone();
 
     let pet_result = if settings.is_cat_visible {
-        window_manager::show_window(app, "pet", false)
+        window_manager::show_window(app, "pet", false).await
     } else {
-        window_manager::hide_window(app, "pet")
+        window_manager::hide_window(app, "pet").await
     };
     if let Err(error) = pet_result {
         tracing::warn!("failed to apply pet visibility: {error}");
     }
 
     let monitor_result = if settings.is_monitor_bar_visible {
-        window_manager::show_window(app, "monitor-bar", false)
+        window_manager::show_window(app, "monitor-bar", false).await
     } else {
-        window_manager::hide_window(app, "monitor-bar")
+        window_manager::hide_window(app, "monitor-bar").await
     };
     if let Err(error) = monitor_result {
         tracing::warn!("failed to apply monitor-bar visibility: {error}");

@@ -177,24 +177,24 @@ pub async fn toggle_production_paused(
 
 #[tauri::command]
 pub async fn show_main_window(app: AppHandle) -> Result<(), String> {
-    window_manager::show_window(&app, "main", true)
+    window_manager::show_window(&app, "main", true).await
 }
 
 #[tauri::command]
 pub async fn show_main_route(route: String, app: AppHandle) -> Result<(), String> {
-    window_manager::show_window(&app, "main", true)?;
+    window_manager::show_window(&app, "main", true).await?;
     app.emit("ui:navigate-main", route)
         .map_err(|error| format!("failed to emit ui:navigate-main: {error}"))
 }
 
 #[tauri::command]
 pub async fn hide_main_window(app: AppHandle) -> Result<(), String> {
-    window_manager::hide_window(&app, "main")
+    window_manager::hide_window(&app, "main").await
 }
 
 #[tauri::command]
 pub async fn show_pet_window(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-    window_manager::show_window(&app, "pet", false)?;
+    window_manager::show_window(&app, "pet", false).await?;
     update_app_settings(
         AppSettingsPatch {
             is_cat_visible: Some(true),
@@ -209,8 +209,8 @@ pub async fn show_pet_window(app: AppHandle, state: State<'_, AppState>) -> Resu
 
 #[tauri::command]
 pub async fn hide_pet_window(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-    window_manager::hide_window(&app, "pet")?;
-    window_manager::hide_window(&app, "pet-panel")?;
+    window_manager::hide_window(&app, "pet").await?;
+    window_manager::hide_window(&app, "pet-panel").await?;
     update_app_settings(
         AppSettingsPatch {
             is_cat_visible: Some(false),
@@ -225,7 +225,7 @@ pub async fn hide_pet_window(app: AppHandle, state: State<'_, AppState>) -> Resu
 
 #[tauri::command]
 pub async fn toggle_monitor_bar(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-    let is_monitor_bar_visible = window_manager::toggle_window(&app, "monitor-bar")?;
+    let is_monitor_bar_visible = window_manager::toggle_window(&app, "monitor-bar").await?;
 
     update_app_settings(
         AppSettingsPatch {
@@ -241,7 +241,7 @@ pub async fn toggle_monitor_bar(app: AppHandle, state: State<'_, AppState>) -> R
 
 #[tauri::command]
 pub async fn show_monitor_bar(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-    window_manager::show_window(&app, "monitor-bar", false)?;
+    window_manager::show_window(&app, "monitor-bar", false).await?;
     update_app_settings(
         AppSettingsPatch {
             is_monitor_bar_visible: Some(true),
@@ -256,7 +256,7 @@ pub async fn show_monitor_bar(app: AppHandle, state: State<'_, AppState>) -> Res
 
 #[tauri::command]
 pub async fn hide_monitor_bar(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
-    window_manager::hide_window(&app, "monitor-bar")?;
+    window_manager::hide_window(&app, "monitor-bar").await?;
     update_app_settings(
         AppSettingsPatch {
             is_monitor_bar_visible: Some(false),
@@ -271,18 +271,18 @@ pub async fn hide_monitor_bar(app: AppHandle, state: State<'_, AppState>) -> Res
 
 #[tauri::command]
 pub async fn show_pet_panel(app: AppHandle) -> Result<(), String> {
-    window_manager::show_window(&app, "pet-panel", true)?;
+    window_manager::show_window(&app, "pet-panel", true).await?;
     emit_corecat_interaction_state(&app, "panelOpen")
 }
 
 #[tauri::command]
 pub async fn hide_pet_panel(app: AppHandle) -> Result<(), String> {
-    window_manager::hide_window(&app, "pet-panel")
+    window_manager::hide_window(&app, "pet-panel").await
 }
 
 #[tauri::command]
 pub async fn toggle_pet_panel(app: AppHandle) -> Result<(), String> {
-    let is_visible = window_manager::toggle_window(&app, "pet-panel")?;
+    let is_visible = window_manager::toggle_window(&app, "pet-panel").await?;
     emit_corecat_interaction_state(
         &app,
         if is_visible {

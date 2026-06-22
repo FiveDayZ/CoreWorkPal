@@ -29,7 +29,7 @@ pub async fn sync_taskbar_monitor(app: &AppHandle) {
         return;
     }
 
-    let window = match window_manager::ensure_webview_window(app, TASKBAR_WINDOW_LABEL) {
+    let window = match window_manager::ensure_webview_window(app, TASKBAR_WINDOW_LABEL).await {
         Ok(window) => window,
         Err(error) => {
             tracing::warn!("{error}");

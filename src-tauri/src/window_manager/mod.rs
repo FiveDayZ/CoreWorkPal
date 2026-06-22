@@ -8,19 +8,12 @@ use crate::{
     models::{AppSettings, AppSettingsPatch},
 };
 
-pub fn handle_window_event(window: &tauri::Window, event: &WindowEvent) {
-    if window.label() == "main" {
-        if let WindowEvent::CloseRequested { api, .. } = event {
-            api.prevent_close();
-            if let Err(error) = window.hide() {
-                tracing::warn!("failed to hide main window on close: {error}");
-            }
-        }
-    }
+pub fn handle_window_event(_window: &tauri::Window, _event: &WindowEvent) {
+    // Windows close naturally and get destroyed, preventing app exit via ExitRequested in lib.rs.
 }
 
-pub fn show_window(app: &AppHandle, label: &str, focus: bool) -> Result<(), String> {
-    let window = ensure_webview_window(app, label)?;
+pub async fn show_window(app: &AppHandle, label: &str, focus: bool) -> Result<(), String> {
+    let window = ensure_webview_window(app, label).await?;
 
     window
         .show()
@@ -35,7 +28,7 @@ pub fn show_window(app: &AppHandle, label: &str, focus: bool) -> Result<(), Stri
     Ok(())
 }
 
-pub fn hide_window(app: &AppHandle, label: &str) -> Result<(), String> {
+pub async fn hide_window(app: &AppHandle, label: &str) -> Result<(), String> {
     let Some(window) = app.get_webview_window(label) else {
         return if is_lazy_window(label) {
             Ok(())
@@ -44,22 +37,29 @@ pub fn hide_window(app: &AppHandle, label: &str) -> Result<(), String> {
         };
     };
 
-    window
-        .hide()
-        .map_err(|error| format!("failed to hide {label}: {error}"))
+    match label {
+        "main" | "pet" | "monitor-bar" | "pet-panel" => {
+            window
+                .close()
+                .map_err(|error| format!("failed to close {label}: {error}"))
+        }
+        _ => {
+            window
+                .hide()
+                .map_err(|error| format!("failed to hide {label}: {error}"))
+        }
+    }
 }
 
-pub fn toggle_window(app: &AppHandle, label: &str) -> Result<bool, String> {
-    let window = ensure_webview_window(app, label)?;
+pub async fn toggle_window(app: &AppHandle, label: &str) -> Result<bool, String> {
+    let window = ensure_webview_window(app, label).await?;
 
     let visible = window
         .is_visible()
         .map_err(|error| format!("failed to read {label} visibility: {error}"))?;
 
     if visible {
-        window
-            .hide()
-            .map_err(|error| format!("failed to hide {label}: {error}"))?;
+        hide_window(app, label).await?;
         Ok(false)
     } else {
         window
@@ -69,7 +69,7 @@ pub fn toggle_window(app: &AppHandle, label: &str) -> Result<bool, String> {
     }
 }
 
-pub fn ensure_webview_window(app: &AppHandle, label: &str) -> Result<WebviewWindow, String> {
+pub async fn ensure_webview_window(app: &AppHandle, label: &str) -> Result<WebviewWindow, String> {
     if let Some(window) = app.get_webview_window(label) {
         return Ok(window);
     }
@@ -77,18 +77,54 @@ pub fn ensure_webview_window(app: &AppHandle, label: &str) -> Result<WebviewWind
     let spec = LazyWindowSpec::for_label(label)
         .ok_or_else(|| format!("window '{label}' not found"))?;
 
-    WebviewWindowBuilder::new(app, spec.label, WebviewUrl::App(spec.url.into()))
+    let mut builder = WebviewWindowBuilder::new(app, spec.label, WebviewUrl::App(spec.url.into()))
         .title(spec.title)
         .inner_size(spec.width, spec.height)
-        .decorations(false)
-        .transparent(true)
-        .resizable(false)
-        .always_on_top(true)
-        .skip_taskbar(true)
+        .decorations(spec.decorations)
+        .transparent(spec.transparent)
+        .resizable(spec.resizable)
+        .always_on_top(spec.always_on_top)
+        .skip_taskbar(spec.skip_taskbar)
         .visible(false)
-        .shadow(false)
+        .shadow(false);
+
+    if label == "main" {
+        builder = builder.center();
+    }
+
+    let window = builder
         .build()
-        .map_err(|error| format!("failed to create {label}: {error}"))
+        .map_err(|error| format!("failed to create {label}: {error}"))?;
+
+    if let Some(state) = app.try_state::<AppState>() {
+        let scale_factor = window.scale_factor().unwrap_or(1.0);
+        let position = {
+            let settings = state.settings.read().await;
+            match label {
+                "pet" => Some((settings.cat_window_x, settings.cat_window_y)),
+                "monitor-bar" => Some((settings.monitor_bar_x, settings.monitor_bar_y)),
+                "pet-panel" => {
+                    let pet_width = 196.0 * scale_factor;
+                    let pet_height = 166.0 * scale_factor;
+                    let panel_height = 360.0 * scale_factor;
+                    let overlap = 10.0 * scale_factor;
+                    let x = settings.cat_window_x + pet_width - overlap;
+                    let y = settings.cat_window_y - (panel_height - pet_height);
+                    Some((x, y))
+                }
+                _ => None,
+            }
+        };
+
+        if let Some((x, y)) = position {
+            let _ = window.set_position(PhysicalPosition::new(
+                x.round() as i32,
+                y.round() as i32,
+            ));
+        }
+    }
+
+    Ok(window)
 }
 
 fn is_lazy_window(label: &str) -> bool {
@@ -101,17 +137,63 @@ struct LazyWindowSpec {
     url: &'static str,
     width: f64,
     height: f64,
+    decorations: bool,
+    transparent: bool,
+    resizable: bool,
+    always_on_top: bool,
+    skip_taskbar: bool,
 }
 
 impl LazyWindowSpec {
     fn for_label(label: &str) -> Option<Self> {
         match label {
+            "main" => Some(Self {
+                label: "main",
+                title: "CoreWorkPal",
+                url: "/main",
+                width: 640.0,
+                height: 420.0,
+                decorations: false,
+                transparent: false,
+                resizable: false,
+                always_on_top: false,
+                skip_taskbar: false,
+            }),
+            "pet" => Some(Self {
+                label: "pet",
+                title: "CoreCat",
+                url: "/pet",
+                width: 196.0,
+                height: 166.0,
+                decorations: false,
+                transparent: true,
+                resizable: false,
+                always_on_top: true,
+                skip_taskbar: true,
+            }),
+            "monitor-bar" => Some(Self {
+                label: "monitor-bar",
+                title: "CoreWorkPal Monitor",
+                url: "/monitor-bar",
+                width: 480.0,
+                height: 42.0,
+                decorations: false,
+                transparent: true,
+                resizable: false,
+                always_on_top: true,
+                skip_taskbar: true,
+            }),
             "pet-panel" => Some(Self {
                 label: "pet-panel",
                 title: "CoreWorkPal Pet Panel",
                 url: "/pet-panel",
                 width: 300.0,
                 height: 360.0,
+                decorations: false,
+                transparent: true,
+                resizable: false,
+                always_on_top: true,
+                skip_taskbar: true,
             }),
             "taskbar-monitor" => Some(Self {
                 label: "taskbar-monitor",
@@ -119,6 +201,11 @@ impl LazyWindowSpec {
                 url: "/taskbar-monitor",
                 width: 520.0,
                 height: 36.0,
+                decorations: false,
+                transparent: true,
+                resizable: false,
+                always_on_top: true,
+                skip_taskbar: true,
             }),
             _ => None,
         }
