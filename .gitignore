@@ -1,0 +1,14 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/target-sandbox/
+cargo-target-sandbox/
+.corepack/
+.pnpm-store/
+.toolchains/
+*.tmp
+tauri-dev*.log
+*-check*.png
+final-*.png
+.tmp/
+.codegraph/

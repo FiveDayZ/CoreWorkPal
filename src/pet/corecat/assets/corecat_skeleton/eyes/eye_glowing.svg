@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <!-- Cyber LED Glowing Eyes (Sparkling star/diamond shape) -->
+  <!-- Left Eye -->
+  <path d="M63.5 59 L67 66 L63.5 73 L60 66 Z" fill="#5ed0ff" filter="url(#neonGlow)"/>
+  <path d="M63.5 61 L65.5 66 L63.5 71 L61.5 66 Z" fill="#ffffff"/>
+  <!-- Right Eye -->
+  <path d="M96.5 59 L100 66 L96.5 73 L93 66 Z" fill="#5ed0ff" filter="url(#neonGlow)"/>
+  <path d="M96.5 61 L98.5 66 L96.5 71 L94.5 66 Z" fill="#ffffff"/>
+</svg>

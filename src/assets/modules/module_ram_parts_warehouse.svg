@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 40" shape-rendering="crispEdges">
+  <!-- Grid background -->
+  <path d="M 0 10 H 140 M 0 20 H 140 M 0 30 H 140 M 20 0 V 40 M 40 0 V 40 M 60 0 V 40 M 80 0 V 40 M 100 0 V 40 M 120 0 V 40" stroke="#0b1e10" stroke-width="1" />
+
+  <!-- Left Side: Warehouse Shelves -->
+  <rect x="5" y="5" width="35" height="30" fill="#051208" stroke="#2c8a41" stroke-width="1" />
+  <!-- Shelf lines -->
+  <line x1="5" y1="15" x2="40" y2="15" stroke="#2c8a41" stroke-width="1" />
+  <line x1="5" y1="25" x2="40" y2="25" stroke="#2c8a41" stroke-width="1" />
+  <!-- Crates on shelves -->
+  <rect x="9" y="8" width="6" height="5" fill="#5cda71" />
+  <rect x="18" y="7" width="8" height="6" fill="#5cda71" opacity="0.6" />
+  <rect x="29" y="9" width="5" height="4" fill="#ffd75e" />
+  
+  <rect x="7" y="18" width="7" height="5" fill="#ffd75e" />
+  <rect x="17" y="17" width="9" height="6" fill="#5cda71" />
+  <rect x="30" y="18" width="6" height="5" fill="#5cda71" opacity="0.4" />
+
+  <rect x="10" y="27" width="8" height="6" fill="#5cda71" opacity="0.6" />
+  <rect x="23" y="27" width="7" height="6" fill="#ffd75e" />
+
+  <!-- Middle: Conveyor pathway -->
+  <path d="M 45 28 H 80" stroke="#2c8a41" stroke-dasharray="3 2" stroke-width="1" />
+  <rect x="52" y="23" width="5" height="4" fill="#5cda71" />
+  <rect x="67" y="23" width="5" height="4" fill="#ffd75e" />
+
+  <!-- Right Side: RAM memory stick -->
+  <rect x="88" y="10" width="46" height="18" fill="#12351c" stroke="#5cda71" stroke-width="2" />
+  <!-- Gold connector pins -->
+  <path d="M 91 28 v 2 M 94 28 v 2 M 97 28 v 2 M 100 28 v 2 M 103 28 v 2 M 106 28 v 2 M 109 28 v 2 M 112 28 v 2 M 115 28 v 2 M 118 28 v 2 M 121 28 v 2 M 124 28 v 2 M 127 28 v 2 M 130 28 v 2 M 133 28 v 2" stroke="#ffd75e" stroke-width="1" />
+  <!-- Memory chips (black packages) -->
+  <rect x="93" y="13" width="6" height="11" fill="#051208" />
+  <rect x="102" y="13" width="6" height="11" fill="#051208" />
+  <rect x="111" y="13" width="6" height="11" fill="#051208" />
+  <rect x="120" y="13" width="6" height="11" fill="#051208" />
+  <rect x="129" y="13" width="6" height="11" fill="#051208" />
+</svg>

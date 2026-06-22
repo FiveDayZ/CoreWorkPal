@@ -1,0 +1,817 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { MouseEvent } from "react";
+import { LogicalSize } from "@tauri-apps/api/dpi";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { playAudioFeedback } from "../../services/audioFeedback";
+import {
+  hidePetPanel,
+  hidePetWindow,
+  saveWindowPosition,
+  showMainRoute,
+  toggleMonitorBar,
+} from "../../services/tauriCommands";
+import {
+  openMainWindow,
+  startDraggingCurrentWindow,
+  toggleQuickPanel,
+} from "../../services/windowApi";
+import { useHardwareStore } from "../../stores/hardwareStore";
+import { usePetStore } from "../../stores/petStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import type { CatState } from "../../types/pet";
+import { ContextMenu, PetSpeechBubble } from "../../ui/components";
+import { CoreCat } from "../../pet/corecat/CoreCat";
+import type { CoreCatDebugInfo } from "../../pet/corecat/CoreCat";
+import {
+  CoreCatDebugPanel,
+  type CoreCatDebugControls,
+} from "../../pet/corecat/debug/CoreCatDebugPanel";
+import {
+  CoreCatQaPanel,
+  type CoreCatQaRunState,
+} from "../../pet/corecat/debug/CoreCatQaPanel";
+import { CoreCatAssetPanel } from "../../pet/corecat/debug/CoreCatAssetPanel";
+import {
+  getCoreCatQaSequence,
+  getCoreCatQaStepHoldMs,
+  shouldCoreCatQaStepAutoFallback,
+  type CoreCatQaSequenceId,
+} from "../../pet/corecat/debug/coreCatQaSequences";
+import { coreCatRuntimeAssetReport } from "../../pet/corecat/assets/coreCatAssetModules";
+import { CoreCatPerformancePanel } from "../../pet/corecat/performance/CoreCatPerformancePanel";
+import type { CoreCatPerformanceReport } from "../../pet/corecat/performance/coreCatPerformanceTypes";
+import { CORE_CAT_ANIMATION_CONFIG } from "../../pet/corecat/animation/animationConfig";
+import type { CoreCatAnimationState } from "../../pet/corecat/animation/animationTypes";
+import { getCoreCatOneShotDurationMs } from "../../pet/corecat/animation/animationStateMachine";
+import { getSpriteSheetOneShotDurationMs } from "../../pet/corecat/animation/spriteSheetAssets";
+import { resolveCoreCatHoverHitArea } from "../../pet/corecat/animation/hoverHitArea";
+
+type VisualCatState = CatState;
+type InteractionRequest = {
+  requestId: number;
+  state: CoreCatAnimationState;
+};
+
+const dragStartThresholdPx = 3;
+const warningStates: CatState[] = [
+  "RepairLight",
+  "RepairHeavy",
+  "TemperatureCheck",
+  "MemoryCrowded",
+];
+const focusLowPowerDelayMs = 30_000;
+const systemHighLoadCpuThreshold = 85;
+const systemHighLoadMemoryThreshold = 90;
+const compactPetWindowSize = {
+  width: 196,
+  height: 166,
+};
+
+const initialQaRun: CoreCatQaRunState = {
+  cleanupOk: null,
+  isRunning: false,
+  sequenceId: null,
+  stuckState: null,
+  steps: [],
+};
+
+export function PetWindow() {
+  const snapshot = useHardwareStore((state) => state.snapshot);
+  const catState = usePetStore((state) => state.catState);
+  const catMessage = usePetStore((state) => state.catMessage);
+  const isPanelOpen = usePetStore((state) => state.isPanelOpen);
+  const markPanelOpen = usePetStore((state) => state.openPanel);
+  const markPanelClosed = usePetStore((state) => state.closePanel);
+  const settings = useSettingsStore((state) => state.settings);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isNodding, setIsNodding] = useState(false);
+  const [isAlerting, setIsAlerting] = useState(false);
+  const [bubbleVisible, setBubbleVisible] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isWindowLowPower, setIsWindowLowPower] = useState(false);
+  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
+  const [interactionRequest, setInteractionRequest] =
+    useState<InteractionRequest | null>(null);
+  const [debugControls, setDebugControls] = useState<CoreCatDebugControls>({
+    forceLowPower: false,
+    pauseVfx: false,
+    showSkeletonBounds: false,
+    showVfxAnchors: false,
+    stateOverride: null,
+    updateProgress: 0.35,
+  });
+  const [debugInfo, setDebugInfo] = useState<CoreCatDebugInfo | null>(null);
+  const [performanceReport, setPerformanceReport] =
+    useState<CoreCatPerformanceReport | null>(null);
+  const [qaRun, setQaRun] = useState<CoreCatQaRunState>(initialQaRun);
+  const dragCandidateRef = useRef(false);
+  const dragMovedRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const petCanvasRef = useRef<HTMLDivElement | null>(null);
+  const saveTimerRef = useRef<number | null>(null);
+  const interactionTimerRef = useRef<number | null>(null);
+  const debugInfoTimerRef = useRef(0);
+  const debugInfoStateRef = useRef<string | null>(null);
+  const debugInfoRef = useRef<CoreCatDebugInfo | null>(null);
+  const qaCancelledRef = useRef(false);
+  const windowLowPowerTimerRef = useRef<number | null>(null);
+  const previousStateRef = useRef<VisualCatState>("Idle");
+  // 用于检测 Tauri 原生拖拽释放：onMoved 停止触发后 120ms 视为拖拽结束
+  const dropLandingTimerRef = useRef<number | null>(null);
+  // 当一个 one-shot 动画正在播放时，新的 one-shot 请求排队等待
+  const pendingInteractionStateRef = useRef<CoreCatAnimationState | null>(null);
+  const interactionRequestIdRef = useRef(0);
+  const errorGlitchArmedRef = useRef(true);
+  // 自引用的动画结束处理函数（存在 ref 里以支持递归调用）
+  const finishInteractionRef = useRef<(() => void) | null>(null);
+
+  const visualState: VisualCatState =
+    settings?.enableStaticCatMode && catState !== "Hidden"
+      ? "Idle"
+      : catState;
+  const scale = settings?.catSize ?? 1;
+  const opacity = settings?.catOpacity ?? 0.95;
+  const bubbleEnabled = settings?.enablePetBubble ?? true;
+  const staticModeEnabled = settings?.enableStaticCatMode ?? false;
+  const manualLowPowerModeEnabled =
+    (settings?.enableLowPowerMode ?? false) || debugControls.forceLowPower;
+  const lowPowerModeEnabled =
+    manualLowPowerModeEnabled || isWindowLowPower;
+  const systemHighLoadDegrade =
+    (snapshot?.cpuUsagePercent ?? 0) >= systemHighLoadCpuThreshold ||
+    (snapshot?.memoryUsagePercent ?? 0) >= systemHighLoadMemoryThreshold;
+
+  const handleDebugControlsChange = useCallback(
+    (next: Partial<CoreCatDebugControls>) => {
+      setDebugControls((current) => ({ ...current, ...next }));
+    },
+    [],
+  );
+
+  const handlePerformanceReport = useCallback(
+    (report: CoreCatPerformanceReport) => {
+      setPerformanceReport(report);
+    },
+    [],
+  );
+
+  const closeContextMenu = useCallback(() => {
+    setIsMenuOpen(false);
+  }, []);
+
+  const runContextMenuAction = useCallback((action: () => void) => {
+    setIsMenuOpen(false);
+    action();
+  }, []);
+
+  const getInteractionDurationMs = useCallback(
+    (state: CoreCatAnimationState) =>
+      getSpriteSheetOneShotDurationMs(state) ?? getCoreCatOneShotDurationMs(state),
+    [],
+  );
+
+  function playInteractionState(state: CoreCatAnimationState) {
+    const durationMs = getInteractionDurationMs(state);
+    setInteractionRequest({
+      requestId: ++interactionRequestIdRef.current,
+      state,
+    });
+
+    if (durationMs != null) {
+      interactionTimerRef.current = window.setTimeout(
+        () => finishInteractionRef.current?.(),
+        durationMs + 80,
+      );
+    }
+  }
+
+  // finishInteractionRef：每次渲染都更新，确保始终捕获最新的 state setter 和 refs
+  finishInteractionRef.current = () => {
+    interactionTimerRef.current = null;
+
+    // 检查队列，如果有下一个等待的 one-shot，接着播放
+    const pending = pendingInteractionStateRef.current;
+    if (pending != null) {
+      pendingInteractionStateRef.current = null;
+      playInteractionState(pending);
+      return;
+    }
+
+    setInteractionRequest(null);
+  };
+
+  const triggerInteractionState = useCallback(
+    (state: CoreCatAnimationState) => {
+      const durationMs = getInteractionDurationMs(state);
+
+      if (interactionTimerRef.current != null) {
+        if (durationMs != null) {
+          // 当前有 one-shot 正在播放，且新请求也是 one-shot → 排队等待
+          // 只保留最新的一个请求（后来的覆盖先来的）
+          pendingInteractionStateRef.current = state;
+          return;
+        }
+        // 新请求不是 one-shot（永久状态）→ 打断当前动画立即切换
+        window.clearTimeout(interactionTimerRef.current);
+        interactionTimerRef.current = null;
+      }
+
+      pendingInteractionStateRef.current = null;
+      playInteractionState(state);
+    },
+    [getInteractionDurationMs],
+  );
+
+  const handleDebugInfo = useCallback((info: CoreCatDebugInfo) => {
+    debugInfoRef.current = info;
+    const now = performance.now();
+    const stateKey = `${info.animationState}:${info.activeVfxCount}:${info.transitionDurationMs}`;
+    if (debugInfoStateRef.current === stateKey && now - debugInfoTimerRef.current < 250) {
+      return;
+    }
+
+    debugInfoStateRef.current = stateKey;
+    debugInfoTimerRef.current = now;
+    setDebugInfo(info);
+  }, []);
+
+  const stopQaRun = useCallback(() => {
+    qaCancelledRef.current = true;
+    setDebugControls((current) => ({ ...current, stateOverride: null }));
+    setQaRun((current) => ({
+      ...current,
+      isRunning: false,
+      stuckState: current.stuckState,
+    }));
+  }, []);
+
+  const runQaSequence = useCallback(
+    (sequenceId: CoreCatQaSequenceId) => {
+      const sequence = getCoreCatQaSequence(sequenceId);
+      qaCancelledRef.current = false;
+      setDebugControls((current) => ({ ...current, stateOverride: null }));
+      setQaRun({
+        cleanupOk: null,
+        isRunning: true,
+        sequenceId,
+        stuckState: null,
+        steps: sequence.states.map((state) => ({
+          note: "queued",
+          state,
+          status: "pending",
+        })),
+      });
+
+      void (async () => {
+        for (const [index, state] of sequence.states.entries()) {
+          if (qaCancelledRef.current) {
+            return;
+          }
+
+          setQaRun((current) => ({
+            ...current,
+            steps: updateQaStep(current.steps, index, {
+              note: "running",
+              status: "running",
+            }),
+          }));
+          setDebugControls((current) => ({ ...current, stateOverride: state }));
+
+          await wait(160);
+          const enteredState = debugInfoRef.current?.animationState;
+          const entered = enteredState === state;
+          await wait(getCoreCatQaStepHoldMs(state));
+          const currentState = debugInfoRef.current?.animationState;
+          const shouldFallback = shouldCoreCatQaStepAutoFallback(state);
+          const fallbackOk = !shouldFallback || currentState !== state;
+          const status = entered && fallbackOk ? "passed" : "failed";
+          const note = entered
+            ? shouldFallback
+              ? fallbackOk
+                ? "auto fallback ok"
+                : "stuck"
+              : "held ok"
+            : `missed ${enteredState ?? "unknown"}`;
+
+          setQaRun((current) => ({
+            ...current,
+            stuckState: status === "failed" ? state : current.stuckState,
+            steps: updateQaStep(current.steps, index, { note, status }),
+          }));
+        }
+
+        setDebugControls((current) => ({ ...current, stateOverride: null }));
+        await wait(500);
+
+        const cleanupOk =
+          (debugInfoRef.current?.vfxParticleCount ?? 0) <= 1 &&
+          (debugInfoRef.current?.activeVfxCount ?? 0) <= 1;
+        setQaRun((current) => ({
+          ...current,
+          cleanupOk,
+          isRunning: false,
+          stuckState: cleanupOk ? current.stuckState : "idle",
+        }));
+      })();
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    // ── 全局 pointerup：在浏览器开发模式下可靠触发（Tauri 内也可能触发，作为快路径）
+    function finalizeDrag() {
+      if (!dragCandidateRef.current) {
+        return;
+      }
+
+      // 清除 onMoved 防抖计时器，避免双重触发
+      if (dropLandingTimerRef.current != null) {
+        window.clearTimeout(dropLandingTimerRef.current);
+        dropLandingTimerRef.current = null;
+      }
+
+      const didDrag = dragMovedRef.current;
+      dragCandidateRef.current = false;
+      dragMovedRef.current = false;
+      setIsDragging(false);
+
+      if (didDrag) {
+        triggerInteractionState("dropLanding");
+      }
+    }
+
+    window.addEventListener("pointerup", finalizeDrag);
+
+    if (!("__TAURI_INTERNALS__" in window)) {
+      return () => {
+        window.removeEventListener("pointerup", finalizeDrag);
+      };
+    }
+
+    const currentWindow = getCurrentWindow();
+    void currentWindow
+      .setSize(
+        new LogicalSize(
+          compactPetWindowSize.width,
+          compactPetWindowSize.height,
+        ),
+      )
+      .catch((error) => {
+        console.error("Failed to resize pet window:", error);
+      });
+
+    void currentWindow.onMoved((event) => {
+      if (!dragCandidateRef.current) {
+        return;
+      }
+
+      dragMovedRef.current = true;
+      setIsMenuOpen(false);
+      if (usePetStore.getState().isPanelOpen) {
+        markPanelClosed();
+        triggerInteractionState("panelClose");
+      }
+      void hidePetPanel();
+
+      if (saveTimerRef.current != null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+
+      saveTimerRef.current = window.setTimeout(() => {
+        void saveWindowPosition("pet", event.payload.x, event.payload.y);
+      }, 250);
+
+      // ── Tauri 原生拖拽防抖检测：onMoved 停止触发 120ms 后视为拖拽结束。
+      // OS 模态拖拽循环会屏蔽 WebView 的 pointerup，所以这是 Tauri 内唯一
+      // 可靠的拖拽释放检测方式。finalizeDrag() 内置防重复触发守卫。
+      if (dropLandingTimerRef.current != null) {
+        window.clearTimeout(dropLandingTimerRef.current);
+      }
+      dropLandingTimerRef.current = window.setTimeout(() => {
+        dropLandingTimerRef.current = null;
+        if (!disposed) {
+          finalizeDrag();
+        }
+      }, 120);
+    }).then((nextUnlisten) => {
+      if (disposed) {
+        nextUnlisten();
+      } else {
+        unlisten = nextUnlisten;
+      }
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+      window.removeEventListener("pointerup", finalizeDrag);
+      if (dropLandingTimerRef.current != null) {
+        window.clearTimeout(dropLandingTimerRef.current);
+      }
+      if (interactionTimerRef.current != null) {
+        window.clearTimeout(interactionTimerRef.current);
+      }
+      if (windowLowPowerTimerRef.current != null) {
+        window.clearTimeout(windowLowPowerTimerRef.current);
+      }
+      if (saveTimerRef.current != null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    function clearWindowLowPowerTimer() {
+      if (windowLowPowerTimerRef.current != null) {
+        window.clearTimeout(windowLowPowerTimerRef.current);
+        windowLowPowerTimerRef.current = null;
+      }
+    }
+
+    function handleVisibilityChange() {
+      clearWindowLowPowerTimer();
+      setIsWindowLowPower(document.visibilityState === "hidden");
+    }
+
+    function handleBlur() {
+      clearWindowLowPowerTimer();
+      windowLowPowerTimerRef.current = window.setTimeout(() => {
+        windowLowPowerTimerRef.current = null;
+        setIsWindowLowPower(true);
+      }, focusLowPowerDelayMs);
+    }
+
+    function handleFocus() {
+      clearWindowLowPowerTimer();
+      if (document.visibilityState !== "hidden") {
+        setIsWindowLowPower(false);
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearWindowLowPowerTimer();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
+  useEffect(() => {
+    const bootWakeKey = "corecat.bootWake.played";
+
+    try {
+      if (window.sessionStorage.getItem(bootWakeKey) === "1") {
+        return;
+      }
+
+      window.sessionStorage.setItem(bootWakeKey, "1");
+    } catch {
+      // Storage may be unavailable in constrained WebViews; the animation can still run.
+    }
+
+    triggerInteractionState("bootWake");
+  }, [triggerInteractionState]);
+
+  useEffect(() => {
+    const cpu = snapshot?.cpuUsagePercent;
+    const threshold = settings?.errorGlitchCpuThreshold ?? 96;
+
+    if (cpu == null) {
+      errorGlitchArmedRef.current = true;
+      return;
+    }
+
+    if (cpu >= threshold && errorGlitchArmedRef.current) {
+      errorGlitchArmedRef.current = false;
+      triggerInteractionState("errorGlitch");
+      return;
+    }
+
+    if (cpu < Math.max(0, threshold - 6)) {
+      errorGlitchArmedRef.current = true;
+    }
+  }, [
+    settings?.errorGlitchCpuThreshold,
+    snapshot?.cpuUsagePercent,
+    triggerInteractionState,
+  ]);
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: UnlistenFn | undefined;
+
+    if (!("__TAURI_INTERNALS__" in window)) {
+      return undefined;
+    }
+
+    void listen<CoreCatAnimationState>(
+      "corecat:interaction-state",
+      (event) => {
+        if (event.payload === "panelOpen") {
+          if (!usePetStore.getState().isPanelOpen) {
+            markPanelOpen();
+          }
+        }
+
+        if (event.payload === "panelClose") {
+          if (usePetStore.getState().isPanelOpen) {
+            markPanelClosed();
+          }
+        }
+
+        triggerInteractionState(event.payload);
+      },
+    ).then((nextUnlisten) => {
+      if (disposed) {
+        nextUnlisten();
+      } else {
+        unlisten = nextUnlisten;
+      }
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [markPanelClosed, markPanelOpen, triggerInteractionState]);
+
+  useEffect(() => {
+    const previousState = previousStateRef.current;
+    previousStateRef.current = visualState;
+
+    if (
+      warningStates.includes(visualState) &&
+      previousState === "Idle"
+    ) {
+      setIsAlerting(true);
+      playAudioFeedback("alert", settings?.enableSound ?? false);
+      window.setTimeout(() => setIsAlerting(false), 240);
+    }
+  }, [settings?.enableSound, visualState]);
+
+  useEffect(() => {
+    if (!bubbleEnabled || !catMessage || catState === "Hidden") {
+      setBubbleVisible(false);
+      return undefined;
+    }
+
+    setBubbleVisible(true);
+    const timer = window.setTimeout(() => setBubbleVisible(false), 3200);
+    return () => window.clearTimeout(timer);
+  }, [bubbleEnabled, catMessage, catState]);
+
+  function handleClick() {
+    if (isMenuOpen) {
+      setIsMenuOpen(false);
+      return;
+    }
+
+    if (dragMovedRef.current) {
+      dragMovedRef.current = false;
+      return;
+    }
+
+    setIsNodding(true);
+    playAudioFeedback("click", settings?.enableSound ?? false);
+    window.setTimeout(() => setIsNodding(false), 300);
+
+  }
+
+  function handleDoubleClick() {
+    dragMovedRef.current = false;
+    setIsMenuOpen(false);
+    playAudioFeedback("meow", settings?.enableSound ?? false);
+    setIsNodding(true);
+    window.setTimeout(() => setIsNodding(false), 300);
+  }
+
+  function handlePointerMove(event: MouseEvent<HTMLDivElement>) {
+    const hoverHitArea = resolveCoreCatHoverHitArea(
+      event.clientX,
+      event.clientY,
+      petCanvasRef.current?.getBoundingClientRect() ?? null,
+    );
+
+    setIsHovered(hoverHitArea.isInside);
+
+    if (
+      staticModeEnabled ||
+      isDragging ||
+      !hoverHitArea.isInside
+    ) {
+      setMouseOffset({ x: 0, y: 0 });
+      return;
+    }
+
+    setMouseOffset({
+      x: Number(
+        (
+          hoverHitArea.x * CORE_CAT_ANIMATION_CONFIG.hover.pointerInputMax
+        ).toFixed(2),
+      ),
+      y: Number(
+        (
+          hoverHitArea.y * CORE_CAT_ANIMATION_CONFIG.hover.pointerInputMax
+        ).toFixed(2),
+      ),
+    });
+  }
+
+  return (
+    <div
+      className="cwp-transparent-root cwp-pet-window-root"
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setMouseOffset({ x: 0, y: 0 });
+      }}
+      onMouseMove={handlePointerMove}
+      onPointerDown={(event) => {
+        if (!isMenuOpen) {
+          return;
+        }
+
+        const target = event.target as HTMLElement;
+        if (
+          target.closest(".cwp-context-menu") ||
+          target.closest(".cwp-pet-container")
+        ) {
+          return;
+        }
+
+        closeContextMenu();
+      }}
+    >
+      <div className="cwp-pet-stage">
+        <div
+          aria-label="CoreCat"
+          className={`cwp-pet-container ${isDragging ? "is-dragging" : ""} ${
+            staticModeEnabled ? "is-static-mode" : ""
+          } ${lowPowerModeEnabled ? "is-low-power-mode" : ""}`}
+          onClick={handleClick}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            dragCandidateRef.current = false;
+            dragMovedRef.current = false;
+            setIsMenuOpen((value) => !value);
+          }}
+          onDoubleClick={handleDoubleClick}
+          onMouseDown={(event) => {
+            if (event.button === 0) {
+              dragCandidateRef.current = true;
+              dragMovedRef.current = false;
+              dragStartRef.current = { x: event.screenX, y: event.screenY };
+              setIsMenuOpen(false);
+            }
+          }}
+          onMouseMove={(event) => {
+            if (!dragCandidateRef.current || event.buttons !== 1) {
+              return;
+            }
+
+            const deltaX = Math.abs(event.screenX - dragStartRef.current.x);
+            const deltaY = Math.abs(event.screenY - dragStartRef.current.y);
+            if (
+              !dragMovedRef.current &&
+              (deltaX > dragStartThresholdPx || deltaY > dragStartThresholdPx)
+            ) {
+              dragMovedRef.current = true;
+              setIsDragging(true);
+              void startDraggingCurrentWindow();
+            }
+          }}
+          // onMouseUp 在 Tauri 原生拖拽期间不可靠，已改为全局 pointerup 监听
+          role="button"
+          style={{
+            opacity,
+            transform: `scale(${scale})`,
+            transformOrigin: "bottom center",
+          }}
+          tabIndex={0}
+        >
+          <PetSpeechBubble visible={bubbleVisible}>
+            {catMessage || "CoreCat 正在守护你的工作站。"}
+          </PetSpeechBubble>
+
+          <div className="cwp-pet-sprite-canvas" ref={petCanvasRef}>
+            <CoreCat
+              catState={visualState}
+              degradeVfx={systemHighLoadDegrade}
+              debugPauseVfx={debugControls.pauseVfx}
+              debugShowBounds={debugControls.showSkeletonBounds}
+              debugShowVfxAnchors={debugControls.showVfxAnchors}
+              debugStateOverride={debugControls.stateOverride}
+              debugUpdateProgress={debugControls.updateProgress}
+              interactionStateOverride={interactionRequest?.state ?? null}
+              interactionStateRequestId={interactionRequest?.requestId ?? 0}
+              isClicking={isNodding}
+              isDragging={isDragging}
+              lowPowerMode={lowPowerModeEnabled}
+              onDebugInfo={import.meta.env.DEV ? handleDebugInfo : undefined}
+              onPerformanceReport={
+                import.meta.env.DEV ? handlePerformanceReport : undefined
+              }
+              pointerInside={isHovered}
+              pointerOffset={mouseOffset}
+              staticMode={staticModeEnabled}
+            />
+            <span
+              className={`cwp-status-light ${statusLightClass(catState)} ${
+                isAlerting ? "is-alerting" : ""
+              }`}
+            />
+          </div>
+        </div>
+
+        <ContextMenu
+          items={[
+            {
+              key: "main",
+              label: "打开主工坊",
+              onClick: () => runContextMenuAction(() => void openMainWindow()),
+            },
+            {
+              key: "settings",
+              label: "打开设置",
+              onClick: () => runContextMenuAction(() => void showMainRoute("settings")),
+            },
+            {
+              key: "about",
+              label: "关于",
+              onClick: () => runContextMenuAction(() => void showMainRoute("about")),
+            },
+            {
+              key: "monitor",
+              label: "显示/隐藏监控条",
+              onClick: () => runContextMenuAction(() => void toggleMonitorBar()),
+            },
+            {
+              key: "panel",
+              label: isPanelOpen ? "收起面板" : "打开面板",
+              onClick: () => runContextMenuAction(() => void toggleQuickPanel()),
+            },
+            {
+              key: "hide",
+              label: "隐藏 CoreCat",
+              danger: true,
+              onClick: () => runContextMenuAction(() => void hidePetWindow()),
+            },
+          ]}
+          open={isMenuOpen}
+        />
+        {import.meta.env.DEV ? (
+          <>
+            <CoreCatDebugPanel
+              controls={debugControls}
+              info={debugInfo}
+              onChange={handleDebugControlsChange}
+            />
+            <CoreCatPerformancePanel report={performanceReport} />
+            <CoreCatQaPanel
+              onRun={runQaSequence}
+              onStop={stopQaRun}
+              run={qaRun}
+            />
+            <CoreCatAssetPanel report={coreCatRuntimeAssetReport} />
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function statusLightClass(state: CatState) {
+  if (state === "RepairHeavy" || state === "TemperatureCheck") {
+    return "is-red";
+  }
+
+  if (state === "RepairLight" || state === "MemoryCrowded") {
+    return "is-orange";
+  }
+
+  return "";
+}
+
+function updateQaStep(
+  steps: CoreCatQaRunState["steps"],
+  index: number,
+  patch: Partial<CoreCatQaRunState["steps"][number]>,
+) {
+  return steps.map((step, currentIndex) =>
+    currentIndex === index ? { ...step, ...patch } : step,
+  );
+}
+
+function wait(durationMs: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, durationMs);
+  });
+}

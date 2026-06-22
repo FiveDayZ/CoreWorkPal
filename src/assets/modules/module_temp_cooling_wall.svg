@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 40" shape-rendering="crispEdges">
+  <!-- Grid background -->
+  <path d="M 0 10 H 140 M 0 20 H 140 M 0 30 H 140 M 20 0 V 40 M 40 0 V 40 M 60 0 V 40 M 80 0 V 40 M 100 0 V 40 M 120 0 V 40" stroke="#091a27" stroke-width="1" />
+
+  <!-- Left Side: Cooling Fan Cabinet -->
+  <rect x="5" y="5" width="30" height="30" fill="#05121c" stroke="#16435c" stroke-width="1" />
+  <!-- Fan circle shroud -->
+  <circle cx="20" cy="20" r="11" fill="none" stroke="#3fc7ff" stroke-width="1" opacity="0.6" />
+  <!-- Fan blades -->
+  <line x1="20" y1="10" x2="20" y2="30" stroke="#3fc7ff" stroke-width="1.5" />
+  <line x1="10" y1="20" x2="30" y2="20" stroke="#3fc7ff" stroke-width="1.5" />
+  <line x1="13" y1="13" x2="27" y2="27" stroke="#3fc7ff" stroke-width="1.5" />
+  <line x1="13" y1="27" x2="27" y2="13" stroke="#3fc7ff" stroke-width="1.5" />
+  <!-- Center hub -->
+  <circle cx="20" cy="20" r="3" fill="#ffffff" stroke="#16435c" stroke-width="1" />
+
+  <!-- Middle: Coolant grid & Flowing pipes -->
+  <rect x="42" y="10" width="46" height="5" fill="#082133" stroke="#16435c" stroke-width="1" />
+  <rect x="42" y="25" width="46" height="5" fill="#082133" stroke="#16435c" stroke-width="1" />
+  <!-- Liquid Flowing pulses -->
+  <rect x="48" y="11" width="8" height="3" fill="#3fc7ff" />
+  <rect x="70" y="11" width="10" height="3" fill="#3fc7ff" opacity="0.6" />
+  <rect x="55" y="26" width="12" height="3" fill="#3fc7ff" />
+  <rect x="76" y="26" width="6" height="3" fill="#3fc7ff" opacity="0.6" />
+
+  <!-- Right Side: Temperature Monitoring / Heat Sink Wall -->
+  <rect x="95" y="5" width="40" height="30" fill="#061624" stroke="#3fc7ff" stroke-width="2" />
+  
+  <!-- Radiator Fins/Grills on the right wall background -->
+  <line x1="113" y1="8" x2="113" y2="32" stroke="#16435c" stroke-width="1" />
+  <line x1="117" y1="8" x2="117" y2="32" stroke="#16435c" stroke-width="1" />
+  <line x1="121" y1="8" x2="121" y2="32" stroke="#16435c" stroke-width="1" />
+  <line x1="125" y1="8" x2="125" y2="32" stroke="#16435c" stroke-width="1" />
+  <line x1="129" y1="8" x2="129" y2="32" stroke="#16435c" stroke-width="1" />
+
+  <!-- Thermometer -->
+  <rect x="100" y="9" width="6" height="22" fill="#05121c" stroke="#16435c" stroke-width="1" />
+  <!-- Bulb -->
+  <circle cx="103" cy="27" r="2.5" fill="#ff5533" />
+  <!-- Temp liquid column (showing safe/cool blue and warning orange-red tip) -->
+  <line x1="103" y1="27" x2="103" y2="18" stroke="#3fc7ff" stroke-width="2" />
+  <line x1="103" y1="18" x2="103" y2="14" stroke="#ff5533" stroke-width="2" />
+  <!-- Thermometer ticks -->
+  <line x1="105" y1="13" x2="105" y2="13" stroke="#ffffff" opacity="0.6" />
+  <line x1="105" y1="18" x2="105" y2="18" stroke="#ffffff" opacity="0.6" />
+  <line x1="105" y1="23" x2="105" y2="23" stroke="#ffffff" opacity="0.6" />
+
+  <!-- Snowflake Icon beside the thermometer -->
+  <!-- Horizontal & vertical core -->
+  <line x1="121" y1="13" x2="121" y2="27" stroke="#ffffff" stroke-width="1" />
+  <line x1="114" y1="20" x2="128" y2="20" stroke="#ffffff" stroke-width="1" />
+  <!-- Diagonals -->
+  <line x1="116" y1="15" x2="126" y2="25" stroke="#ffffff" stroke-width="1" />
+  <line x1="116" y1="25" x2="126" y2="15" stroke="#ffffff" stroke-width="1" />
+  <!-- Tips -->
+  <circle cx="121" cy="20" r="1.5" fill="#3fc7ff" />
+  <rect x="120" y="11" width="3" height="1" fill="#ffffff" />
+  <rect x="120" y="28" width="3" height="1" fill="#ffffff" />
+  <rect x="112" y="19" width="1" height="3" fill="#ffffff" />
+  <rect x="128" y="19" width="1" height="3" fill="#ffffff" />
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <!-- Gold gradient -->
+    <linearGradient id="goldG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff1a8"/>
+      <stop offset="50%" stop-color="#ffd75e"/>
+      <stop offset="100%" stop-color="#b8860b"/>
+    </linearGradient>
+    <filter id="goldGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Glowing background star -->
+  <path d="M104 20 L108.5 31 L120 31 L111 37.5 L114.5 48 L104 41.5 L93.5 48 L97 37.5 L88 31 L99.5 31 Z" fill="url(#goldG)" filter="url(#goldGlow)"/>
+
+  <!-- Inner star overlay for volumetric bevel -->
+  <path d="M104 24 L107 32.5 L116 32.5 L109 37 L111.5 45 L104 40 L96.5 45 L99 37 L92 32.5 L101 32.5 Z" fill="#ffffff" opacity="0.45"/>
+  <path d="M104 26 L106 33 L114 33 L108 37.5 L110 43.5 L104 39.5 L98 43.5 L100 37.5 L94 33 L102 33 Z" fill="url(#goldG)"/>
+
+  <!-- Tiny center highlight circle -->
+  <circle cx="104" cy="35" r="1.5" fill="#ffffff"/>
+</svg>

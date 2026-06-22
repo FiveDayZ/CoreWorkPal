@@ -1,0 +1,43 @@
+export function formatPercent(value: number | null): string {
+  return value == null ? "N/A" : `${value.toFixed(1)}%`;
+}
+
+export function formatTemperature(value: number | null): string {
+  return value == null ? "N/A" : `${value.toFixed(1)} C`;
+}
+
+export function formatBytesPerSecond(value: number | null): string {
+  if (value == null) {
+    return "N/A";
+  }
+
+  return `${formatBytes(value)}/s`;
+}
+
+export function formatBytes(value: number | null): string {
+  if (value == null) {
+    return "N/A";
+  }
+
+  const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+  let size = Math.max(0, value);
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex].replace("/s", "")}`;
+}
+
+export function formatDuration(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
+export function formatParts(value: number): string {
+  return value.toFixed(1);
+}

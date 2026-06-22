@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <linearGradient id="pouchG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2d3d4f"/>
+      <stop offset="100%" stop-color="#141c26"/>
+    </linearGradient>
+    <linearGradient id="flapG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3c4e63"/>
+      <stop offset="100%" stop-color="#212c38"/>
+    </linearGradient>
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Pouch body -->
+  <path d="M91 107 C91 102 114 102 114 107 L114 119 C114 123 108 125 102 125 C97 125 91 123 91 119 Z" fill="url(#pouchG)" stroke="#3f5166" stroke-width="1.5"/>
+
+  <!-- Pouch Flap (opening) -->
+  <path d="M90 106 C90 102 115 102 115 106 L113 111 C113 113 110 114 102 114 C95 114 92 113 92 111 Z" fill="url(#flapG)" stroke="#4a5f78" stroke-width="1"/>
+
+  <!-- Cyber LED indicator light -->
+  <circle cx="102.5" cy="118.5" r="3" fill="#5ed0ff" filter="url(#neonGlow)"/>
+  <circle cx="102.5" cy="118.5" r="1" fill="#ffffff"/>
+  
+  <!-- Subtle cyber accent lines on the sides -->
+  <line x1="94" y1="110" x2="94" y2="118" stroke="#ffffff" stroke-width="0.8" opacity="0.3"/>
+  <line x1="111" y1="110" x2="111" y2="118" stroke="#ffffff" stroke-width="0.8" opacity="0.3"/>
+</svg>

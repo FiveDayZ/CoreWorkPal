@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <!-- Glassy radial fill -->
+    <radialGradient id="bubbleG" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="40%" stop-color="#abf0ff" stop-opacity="0.3"/>
+      <stop offset="85%" stop-color="#5ed0ff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#5ed0ff" stop-opacity="0.45"/>
+    </radialGradient>
+    <filter id="bubbleGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Glowing bubble edge and glassy body -->
+  <circle cx="99" cy="64" r="9" fill="url(#bubbleG)" stroke="#82e9ff" stroke-width="1.2" filter="url(#bubbleGlow)"/>
+
+  <!-- Bubble highlight reflections -->
+  <circle cx="96.5" cy="61.5" r="2.5" fill="#ffffff" opacity="0.8"/>
+  <path d="M104 67 A 6 6 0 0 1 97 69" fill="none" stroke="#ffffff" stroke-width="0.8" opacity="0.45" stroke-linecap="round"/>
+</svg>

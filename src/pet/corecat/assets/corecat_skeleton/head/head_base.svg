@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <!-- Rich orange head gradient -->
+    <linearGradient id="headG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffb67b"/>
+      <stop offset="50%" stop-color="#f28a3d"/>
+      <stop offset="100%" stop-color="#bd531b"/>
+    </linearGradient>
+    <!-- Cream cheeks/muzzle gradient -->
+    <linearGradient id="muzzleG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f5ded0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ambient shadow under head -->
+  <path d="M40 65 C40 45 52 35 80 35 C108 35 120 45 120 65 L120 82 C120 96 108 103 80 103 C52 103 40 96 40 82 Z" fill="#6d2204" opacity="0.25"/>
+
+  <!-- Main Head Shape (Cute chubby cheeks contour) -->
+  <path d="M40 65 C40 46 50 36 80 36 C110 36 120 46 120 65 L120 81 C120 95 108 102 80 102 C52 102 40 95 40 81 Z" fill="url(#headG)"/>
+
+  <!-- Volumetric Head Shading -->
+  <path d="M80 36 C98 37 120 45 120 64 L120 81 C120 95 108 102 80 102 C96 97 101 70 94 52 C91 46 86 38 80 36 Z" fill="#913608" opacity="0.25"/>
+
+  <!-- White cheeks / Muzzle patches -->
+  <!-- Left Cheek/Muzzle -->
+  <ellipse cx="68" cy="85" rx="13" ry="9" fill="url(#muzzleG)"/>
+  <!-- Right Cheek/Muzzle -->
+  <ellipse cx="92" cy="85" rx="13" ry="9" fill="url(#muzzleG)"/>
+  
+  <!-- Cute small nose (deep pink) -->
+  <polygon points="80,80 77,77 83,77" fill="#e97e88"/>
+
+  <!-- Sleek tech whiskers -->
+  <!-- Left Whiskers -->
+  <path d="M46 82 L32 82 M44 87 L28 89 M46 77 L34 75" fill="none" stroke="#2c3b4e" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+  <!-- Right Whiskers -->
+  <path d="M114 82 L128 82 M116 87 L132 89 M114 77 L126 75" fill="none" stroke="#2c3b4e" stroke-width="1.2" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- Subtle Top Highlight -->
+  <path d="M44 60 C48 44 60 40 80 40 C100 40 112 44 116 60" fill="none" stroke="#ffedd9" stroke-width="2.5" stroke-linecap="round" opacity="0.45"/>
+</svg>

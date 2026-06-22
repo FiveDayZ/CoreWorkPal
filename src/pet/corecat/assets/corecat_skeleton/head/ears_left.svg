@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <linearGradient id="earG" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b64e19"/>
+      <stop offset="60%" stop-color="#f28a3d"/>
+      <stop offset="100%" stop-color="#ffb170"/>
+    </linearGradient>
+    <linearGradient id="innerEarG" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c55365"/>
+      <stop offset="100%" stop-color="#ffb3be"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Ear Structure (Left) -->
+  <path d="M49 53 L45 23 C48 23 54 28 69 53 Z" fill="url(#earG)" stroke="#8d3204" stroke-width="0.8"/>
+  
+  <!-- Inner Ear Fur/Panel (Pinkish-cream) -->
+  <path d="M51 51 L48 28 C51 32 55 38 63 51 Z" fill="url(#innerEarG)"/>
+
+  <!-- Tech seam / Joint rivet accent -->
+  <line x1="47" y1="36" x2="52" y2="46" stroke="#2c3b4e" stroke-width="1.2" opacity="0.6"/>
+  <circle cx="53" cy="48" r="1" fill="#5ed0ff"/>
+</svg>

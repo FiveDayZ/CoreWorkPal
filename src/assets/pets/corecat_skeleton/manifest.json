@@ -1,0 +1,39 @@
+{
+  "name": "corecat_skeleton",
+  "version": "0.1.0-placeholder",
+  "canvas": {
+    "width": 160,
+    "height": 160,
+    "pixelRatio": 2
+  },
+  "defaultScale": 1,
+  "assets": {
+    "shadow": "shadow.png",
+    "tail": "tail/tail_base.png",
+    "body_base": "body/body_base.png",
+    "arm_left": "body/arm_left.png",
+    "arm_right_wrench": "body/arm_right_wrench.png",
+    "head_base": "head/head_base.png",
+    "ears_left": "head/ear_left.png",
+    "ears_right": "head/ear_right.png",
+    "goggles": "head/goggles.png",
+    "eyes": "eyes/eye_normal.png",
+    "pouch": "body/pouch.png",
+    "vfx_anchor": "vfx/vfx_anchor_placeholder.svg"
+  },
+  "bones": {
+    "root": { "pivot": [80, 120] },
+    "shadow": { "pivot": [80, 136] },
+    "tail": { "pivot": [54, 104] },
+    "body_base": { "pivot": [80, 105] },
+    "arm_left": { "pivot": [58, 92] },
+    "arm_right_wrench": { "pivot": [102, 92] },
+    "head_base": { "pivot": [80, 68] },
+    "ears_left": { "pivot": [57, 40] },
+    "ears_right": { "pivot": [103, 40] },
+    "goggles": { "pivot": [80, 62] },
+    "eyes": { "pivot": [80, 66] },
+    "pouch": { "pivot": [106, 112] },
+    "vfx_anchor": { "pivot": [118, 72] }
+  }
+}

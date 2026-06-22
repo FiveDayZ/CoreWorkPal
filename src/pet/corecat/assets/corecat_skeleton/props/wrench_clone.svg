@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <linearGradient id="wrenchG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e3f2fd"/>
+      <stop offset="50%" stop-color="#90caf9"/>
+      <stop offset="100%" stop-color="#42a5f5"/>
+    </linearGradient>
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <g transform="rotate(-25 116 74)">
+    <!-- Metallic Handle -->
+    <rect x="112.5" y="58" width="7" height="36" rx="3" fill="#455a64" stroke="#263238" stroke-width="1"/>
+    <rect x="113.5" y="58" width="5" height="36" rx="2" fill="#b0bec5"/>
+    
+    <!-- Wrench Head -->
+    <circle cx="116" cy="54" r="8" fill="url(#wrenchG)" stroke="#37474f" stroke-width="1.2"/>
+    <path d="M111.5" y="50" d="M112 59 L120 51" stroke="#1c2d3d" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- Bottom loop of handle -->
+    <circle cx="116" cy="94" r="4.5" fill="#cfd8dc" stroke="#37474f" stroke-width="1"/>
+    <circle cx="116" cy="94" r="1.5" fill="#1c2d3d"/>
+
+    <!-- Glowing cyan indicator -->
+    <line x1="116" y1="64" x2="116" y2="84" stroke="#5ed0ff" stroke-width="1.2" stroke-linecap="round" filter="url(#neonGlow)"/>
+  </g>
+</svg>

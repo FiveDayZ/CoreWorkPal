@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 40" shape-rendering="crispEdges">
+  <!-- Grid background -->
+  <path d="M 0 10 H 140 M 0 20 H 140 M 0 30 H 140 M 20 0 V 40 M 40 0 V 40 M 60 0 V 40 M 80 0 V 40 M 100 0 V 40 M 120 0 V 40" stroke="#1d120a" stroke-width="1" />
+
+  <!-- Left Side: Archive filing cabinet -->
+  <rect x="5" y="5" width="35" height="30" fill="#140f0a" stroke="#d49e6a" stroke-width="1" />
+  
+  <!-- Stacked Drawers -->
+  <!-- Drawer 1 -->
+  <rect x="8" y="8" width="29" height="6" fill="#1e1610" stroke="#8c6441" stroke-width="1" />
+  <rect x="11" y="10" width="4" height="2" fill="#d49e6a" />
+  <line x1="19" y1="11" x2="27" y2="11" stroke="#ffd75e" stroke-width="1" />
+  
+  <!-- Drawer 2 -->
+  <rect x="8" y="17" width="29" height="6" fill="#1e1610" stroke="#8c6441" stroke-width="1" />
+  <rect x="11" y="19" width="4" height="2" fill="#ffd75e" />
+  <line x1="19" y1="20" x2="27" y2="20" stroke="#ffd75e" stroke-width="1" />
+
+  <!-- Drawer 3 -->
+  <rect x="8" y="26" width="29" height="6" fill="#1e1610" stroke="#8c6441" stroke-width="1" />
+  <rect x="11" y="28" width="4" height="2" fill="#8c6441" />
+  <line x1="19" y1="29" x2="27" y2="29" stroke="#ffd75e" stroke-width="1" />
+
+  <!-- Middle: Magnetic tape reels and connection tracks -->
+  <line x1="40" y1="15" x2="95" y2="15" stroke="#8c6441" stroke-width="1" opacity="0.4" />
+  <line x1="40" y1="25" x2="95" y2="25" stroke="#8c6441" stroke-width="1" opacity="0.4" />
+
+  <!-- Tape reel Left -->
+  <circle cx="52" cy="20" r="7" fill="#140f0a" stroke="#d49e6a" stroke-width="1" />
+  <circle cx="52" cy="20" r="3" fill="#8c6441" />
+  <line x1="52" y1="15" x2="52" y2="25" stroke="#ffd75e" stroke-width="1" />
+  <line x1="47" y1="20" x2="57" y2="20" stroke="#ffd75e" stroke-width="1" />
+
+  <!-- Tape reel Right -->
+  <circle cx="78" cy="20" r="7" fill="#140f0a" stroke="#d49e6a" stroke-width="1" />
+  <circle cx="78" cy="20" r="3" fill="#8c6441" />
+  <line x1="78" y1="15" x2="78" y2="25" stroke="#ffd75e" stroke-width="1" />
+  <line x1="73" y1="20" x2="83" y2="20" stroke="#ffd75e" stroke-width="1" />
+
+  <!-- Tape thread -->
+  <line x1="52" y1="13" x2="78" y2="13" stroke="#ffd75e" stroke-width="1.5" />
+
+  <!-- Right Side: Mechanical Hard Disk Drive structure -->
+  <rect x="95" y="5" width="40" height="30" fill="#120e0a" stroke="#d49e6a" stroke-width="2" />
+  
+  <!-- Disk Platter -->
+  <circle cx="118" cy="20" r="11" fill="#1e1610" stroke="#d49e6a" stroke-width="1.5" />
+  <!-- Platter sector tracks -->
+  <circle cx="118" cy="20" r="8" fill="none" stroke="#ffd75e" stroke-width="1" stroke-dasharray="2 2" opacity="0.6" />
+  <circle cx="118" cy="20" r="5" fill="none" stroke="#8c6441" stroke-width="1" />
+  <circle cx="118" cy="20" r="2" fill="#ffd75e" />
+
+  <!-- Actuator arm -->
+  <circle cx="102" cy="12" r="2.5" fill="#8c6441" stroke="#d49e6a" stroke-width="1" />
+  <line x1="104" y1="13" x2="114" y2="18" stroke="#ffffff" stroke-width="1.5" />
+  <rect x="113" y="17" width="2" height="2" fill="#ffd75e" />
+
+  <!-- Electronic controller chip -->
+  <rect x="99" y="24" width="6" height="5" fill="#1e1610" stroke="#8c6441" stroke-width="1" />
+  <circle cx="102" cy="26.5" r="0.5" fill="#ffd75e" />
+</svg>

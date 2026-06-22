@@ -1,0 +1,139 @@
+import { mainRoutes, type MainRoute } from "../../routes";
+import { formatParts } from "../../services/formatters";
+import {
+  showPetPanel,
+} from "../../services/tauriCommands";
+import {
+  startDraggingCurrentWindow,
+  minimizeMainWindow,
+  closeMainWindow,
+} from "../../services/windowApi";
+import { useUiStore } from "../../stores/uiStore";
+import { useWorkshopStore } from "../../stores/workshopStore";
+import {
+  GlassPanel,
+  Sidebar,
+  TitleBar,
+  PetAvatar,
+} from "../../ui/components";
+import { PixelIcon, type PixelIconName } from "../../ui/PixelIcon";
+
+const routeLabels: Record<MainRoute, { icon: PixelIconName; text: string }> = {
+  dashboard: { icon: "home", text: "控制台" },
+  workshop: { icon: "tools", text: "工坊" },
+  settings: { icon: "settings", text: "设置" },
+  workLog: { icon: "log", text: "日志" },
+  about: { icon: "info", text: "关于" },
+};
+
+export function MainWindow() {
+  const route = useUiStore((state) => state.mainRoute);
+  const setRoute = useUiStore((state) => state.setMainRoute);
+  const workshop = useWorkshopStore((state) => state.state);
+  const routeConfig = mainRoutes.find((item) => item.key === route);
+  const CurrentPage = routeConfig?.element ?? mainRoutes[0].element;
+
+  return (
+    <main className="cwp-main-root">
+      <GlassPanel className="cwp-main-shell">
+        <TitleBar
+          actions={
+            <>
+              <button
+                aria-label="Minimize"
+                className="cwp-window-action"
+                onClick={() => void minimizeMainWindow()}
+                type="button"
+                title="最小化"
+              >
+                ─
+              </button>
+              <button
+                aria-label="Toggle Panel"
+                className="cwp-window-action"
+                onClick={() => void showPetPanel()}
+                type="button"
+                title="显示快捷面板"
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <PixelIcon name="restore" size={10} />
+              </button>
+              <button
+                aria-label="Close"
+                className="cwp-window-action is-danger"
+                onClick={() => void closeMainWindow()}
+                type="button"
+                title="关闭窗口"
+              >
+                ×
+              </button>
+            </>
+          }
+          center="运行良好 · 零件组装中"
+          onDragStart={() => void startDraggingCurrentWindow()}
+          stats={
+            <div className="cwp-window-stats">
+              <div className="cwp-stat-pill" title="工坊等级">
+                <span className="cwp-stat-pill-label">LV.</span>
+                <span style={{ color: "var(--color-brand-orange-strong)", fontWeight: 700 }}>
+                  {workshop?.workshopLevel ?? 1}
+                </span>
+              </div>
+              <div className="cwp-stat-pill" title="攒下来的零件">
+                <span className="cwp-stat-pill-label" style={{ display: "inline-flex", alignItems: "center" }}>
+                  <PixelIcon name="wrench" size={12} style={{ color: "var(--color-brand-orange-strong)" }} />
+                </span>
+                <span style={{ color: "var(--color-text-primary)", marginLeft: "4px" }}>
+                  {formatParts(workshop?.parts ?? 0)}
+                </span>
+              </div>
+              <div className="cwp-stat-pill" title="获得灵感">
+                <span className="cwp-stat-pill-label" style={{ display: "inline-flex", alignItems: "center" }}>
+                  <PixelIcon name="lightbulb" size={12} style={{ color: "var(--color-insight-gold)" }} />
+                </span>
+                <span style={{ color: "var(--color-insight-gold)", marginLeft: "4px" }}>
+                  {formatParts(workshop?.insight ?? 0)}
+                </span>
+              </div>
+            </div>
+          }
+        />
+
+        <div className="cwp-window-body">
+          <Sidebar
+            footer={
+              <div className="cwp-sidebar-status-card">
+                <PetAvatar />
+                <div className="cwp-sidebar-status-info">
+                  <span className="cwp-sidebar-status-name">
+                    CoreCat
+                  </span>
+                  <span className="cwp-sidebar-status-online">
+                    ● 陪伴中
+                  </span>
+                </div>
+              </div>
+            }
+            items={mainRoutes.map((item) => ({
+              active: item.key === route,
+              key: item.key,
+              label: (
+                <>
+                  <span style={{ display: "inline-flex", alignItems: "center", marginRight: "6px" }}>
+                    <PixelIcon name={routeLabels[item.key].icon} size={14} />
+                  </span>
+                  {routeLabels[item.key].text}
+                </>
+              ),
+              onClick: () => setRoute(item.key),
+            }))}
+          />
+
+          <section className="cwp-main-content">
+            <CurrentPage />
+          </section>
+        </div>
+      </GlassPanel>
+    </main>
+  );
+}

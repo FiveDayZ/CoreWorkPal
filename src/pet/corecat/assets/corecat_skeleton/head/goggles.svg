@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <!-- Dark metal casing -->
+    <linearGradient id="casingG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3a4b5c"/>
+      <stop offset="50%" stop-color="#1b2530"/>
+      <stop offset="100%" stop-color="#0a0f14"/>
+    </linearGradient>
+    <!-- Cyan neon lens ring -->
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+    <!-- Translucent cyber lens back -->
+    <linearGradient id="lensG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0b2330"/>
+      <stop offset="100%" stop-color="#144866"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer frame strap/connection to ears -->
+  <rect x="42" y="60" width="76" height="10" rx="5" fill="#1b2530" stroke="#0a0f14" stroke-width="1"/>
+  
+  <!-- Main visor casing -->
+  <rect x="46" y="52" width="68" height="28" rx="14" fill="url(#casingG)" stroke="#5ed0ff" stroke-width="1.8" filter="url(#neonGlow)"/>
+  
+  <!-- Visor Lens Openings -->
+  <!-- Left Lens -->
+  <rect x="50" y="56" width="27" height="20" rx="10" fill="url(#lensG)"/>
+  <!-- Right Lens -->
+  <rect x="83" y="56" width="27" height="20" rx="10" fill="url(#lensG)"/>
+
+  <!-- Glowing neon frames for lenses -->
+  <rect x="50" y="56" width="27" height="20" rx="10" fill="none" stroke="#5ed0ff" stroke-width="1" opacity="0.6"/>
+  <rect x="83" y="56" width="27" height="20" rx="10" fill="none" stroke="#5ed0ff" stroke-width="1" opacity="0.6"/>
+
+  <!-- Futuristic Corner HUD Bracket Accents inside lenses -->
+  <!-- Left Lens Brackets -->
+  <path d="M54 60 L52 60 L52 62 M73 60 L75 60 L75 62 M52 70 L52 72 L54 72 M75 70 L75 72 L73 72" fill="none" stroke="#82e9ff" stroke-width="0.8" opacity="0.5"/>
+  <!-- Right Lens Brackets -->
+  <path d="M87 60 L85 60 L85 62 M106 60 L108 60 L108 62 M85 70 L85 72 L87 72 M108 70 L108 72 L106 72" fill="none" stroke="#82e9ff" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- Dynamic Glass Lens Shine / Diagonal Highlight -->
+  <!-- Left Shine -->
+  <path d="M52 61 L70 57" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.45"/>
+  <!-- Right Shine -->
+  <path d="M85 61 L103 57" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.45"/>
+  
+  <!-- Sleek side hardware rivets -->
+  <circle cx="48" cy="66" r="1.5" fill="#cfd8dc"/>
+  <circle cx="112" cy="66" r="1.5" fill="#cfd8dc"/>
+</svg>

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 40" shape-rendering="crispEdges">
+  <!-- Grid background -->
+  <path d="M 0 10 H 140 M 0 20 H 140 M 0 30 H 140 M 20 0 V 40 M 40 0 V 40 M 60 0 V 40 M 80 0 V 40 M 100 0 V 40 M 120 0 V 40" stroke="#0a1a27" stroke-width="1" />
+
+  <!-- Left Side: Network Tower -->
+  <!-- Tower Base and legs -->
+  <line x1="20" y1="5" x2="20" y2="35" stroke="#3fc7ff" stroke-width="1.5" />
+  <line x1="20" y1="35" x2="10" y2="35" stroke="#3fc7ff" stroke-width="1" />
+  <line x1="20" y1="35" x2="30" y2="35" stroke="#3fc7ff" stroke-width="1" />
+  <line x1="20" y1="20" x2="10" y2="35" stroke="#3fc7ff" stroke-width="1" />
+  <line x1="20" y1="20" x2="30" y2="35" stroke="#3fc7ff" stroke-width="1" />
+  <line x1="20" y1="5" x2="15" y2="20" stroke="#3fc7ff" stroke-width="1" />
+  <line x1="20" y1="5" x2="25" y2="20" stroke="#3fc7ff" stroke-width="1" />
+  <!-- Signal waves -->
+  <path d="M 17 2 A 4 4 0 0 0 12 5" fill="none" stroke="#3fc7ff" stroke-width="1" opacity="0.5" />
+  <path d="M 23 2 A 4 4 0 0 1 28 5" fill="none" stroke="#3fc7ff" stroke-width="1" opacity="0.5" />
+  <path d="M 15 -1 A 6 6 0 0 0 8 4" fill="none" stroke="#3fc7ff" stroke-width="1" opacity="0.8" />
+  <path d="M 25 -1 A 6 6 0 0 1 32 4" fill="none" stroke="#3fc7ff" stroke-width="1" opacity="0.8" />
+
+  <!-- Middle: Fiber tracks and flowing packets -->
+  <path d="M 33 15 H 85 M 33 25 H 85" stroke="#16435c" stroke-width="1.5" fill="none" />
+  <!-- Pulses -->
+  <rect x="45" y="14" width="4" height="3" fill="#3fc7ff" />
+  <rect x="65" y="14" width="4" height="3" fill="#3fc7ff" opacity="0.5" />
+  <rect x="55" y="24" width="4" height="3" fill="#3fc7ff" />
+  <rect x="75" y="24" width="4" height="3" fill="#3fc7ff" opacity="0.5" />
+
+  <!-- Right Side: Hub Switch Box -->
+  <rect x="90" y="8" width="44" height="24" fill="#08141b" stroke="#3fc7ff" stroke-width="2" />
+  <!-- Ethernet ports -->
+  <rect x="94" y="14" width="6" height="8" fill="#16435c" stroke="#3fc7ff" stroke-width="1" />
+  <rect x="103" y="14" width="6" height="8" fill="#16435c" stroke="#3fc7ff" stroke-width="1" />
+  <rect x="112" y="14" width="6" height="8" fill="#16435c" stroke="#3fc7ff" stroke-width="1" />
+  <rect x="121" y="14" width="6" height="8" fill="#16435c" stroke="#3fc7ff" stroke-width="1" />
+  <!-- LED lights -->
+  <circle cx="97" cy="25" r="1" fill="#5cda71" />
+  <circle cx="106" cy="25" r="1" fill="#ffd75e" />
+  <circle cx="115" cy="25" r="1" fill="#5cda71" />
+  <circle cx="124" cy="25" r="1" fill="#5cda71" />
+</svg>

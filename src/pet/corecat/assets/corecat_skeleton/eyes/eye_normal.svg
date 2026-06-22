@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <!-- Cyber LED Normal Eyes -->
+  <!-- Left Eye -->
+  <circle cx="63.5" cy="66" r="4.5" fill="#5ed0ff" filter="url(#neonGlow)"/>
+  <circle cx="63.5" cy="66" r="1.5" fill="#ffffff"/>
+  <!-- Right Eye -->
+  <circle cx="96.5" cy="66" r="4.5" fill="#5ed0ff" filter="url(#neonGlow)"/>
+  <circle cx="96.5" cy="66" r="1.5" fill="#ffffff"/>
+</svg>

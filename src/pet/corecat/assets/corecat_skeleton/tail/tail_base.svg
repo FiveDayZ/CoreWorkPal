@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <linearGradient id="orangeG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffb170"/>
+      <stop offset="50%" stop-color="#f28a3d"/>
+      <stop offset="100%" stop-color="#b8521d"/>
+    </linearGradient>
+    <linearGradient id="metalG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4e657e"/>
+      <stop offset="100%" stop-color="#1f2c3a"/>
+    </linearGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <!-- Main mechanical tail tube -->
+  <path d="M57 104 C44 102 36 94 40 82 C44 70 56 71 69 75" fill="none" stroke="url(#orangeG)" stroke-width="18" stroke-linecap="round"/>
+  <!-- Metallic connector socket -->
+  <path d="M57 104 C55 102 52 98 50 99" fill="none" stroke="url(#metalG)" stroke-width="20" stroke-linecap="round"/>
+  <!-- Neon energy circuit -->
+  <path d="M47 95 C43 92 41 87 43 83" fill="none" stroke="#5ed0ff" stroke-width="3.5" stroke-linecap="round" filter="url(#neonGlow)"/>
+</svg>

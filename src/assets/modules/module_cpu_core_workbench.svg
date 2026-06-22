@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 40" shape-rendering="crispEdges">
+  <!-- Grid background -->
+  <path d="M 0 10 H 140 M 0 20 H 140 M 0 30 H 140 M 20 0 V 40 M 40 0 V 40 M 60 0 V 40 M 80 0 V 40 M 100 0 V 40 M 120 0 V 40" stroke="#162233" stroke-width="1" />
+  
+  <!-- Left Side: Terminal Console -->
+  <rect x="5" y="5" width="40" height="30" fill="#0b121e" stroke="#283a54" stroke-width="1" />
+  <!-- Terminal content -->
+  <rect x="8" y="9" width="8" height="2" fill="#ffd75e" />
+  <rect x="8" y="14" width="20" height="2" fill="#f4a641" />
+  <rect x="8" y="19" width="14" height="2" fill="#3fc7ff" />
+  <rect x="8" y="24" width="26" height="2" fill="#5cda71" />
+  <rect x="8" y="29" width="18" height="2" fill="#a0b2c6" />
+  <!-- Blinking cursor -->
+  <rect x="28" y="29" width="3" height="2" fill="#f4a641" />
+
+  <!-- Middle: Circuit tracks -->
+  <path d="M 50 20 H 75 M 50 12 H 60 L 68 20 M 50 28 H 60 L 68 20 M 75 20 H 85" stroke="#f4a641" stroke-width="1" fill="none" opacity="0.6" />
+  <circle cx="75" cy="20" r="2" fill="#ffb856" />
+
+  <!-- Right Side: CPU Chip Diagram -->
+  <rect x="95" y="5" width="38" height="30" fill="#0d1522" stroke="#f4a641" stroke-width="2" />
+  <!-- Pins -->
+  <path d="M 100 3 V 5 M 106 3 V 5 M 112 3 V 5 M 118 3 V 5 M 124 3 V 5 M 128 3 V 5
+           M 100 35 V 37 M 106 35 V 37 M 112 35 V 37 M 118 35 V 37 M 124 35 V 37 M 128 35 V 37
+           M 93 10 H 95 M 93 16 H 95 M 93 22 H 95 M 93 28 H 95
+           M 133 10 H 135 M 133 16 H 135 M 133 22 H 135 M 133 28 H 135" stroke="#ffd75e" stroke-width="1" />
+  <!-- CPU core -->
+  <rect x="104" y="10" width="20" height="20" fill="#f4a641" opacity="0.3" />
+  <rect x="108" y="14" width="12" height="12" fill="#ffd75e" />
+  <!-- Chip lines -->
+  <line x1="104" y1="10" x2="108" y2="14" stroke="#ffd75e" stroke-width="1" />
+  <line x1="124" y1="10" x2="120" y2="14" stroke="#ffd75e" stroke-width="1" />
+  <line x1="104" y1="30" x2="108" y2="26" stroke="#ffd75e" stroke-width="1" />
+  <line x1="124" y1="30" x2="120" y2="26" stroke="#ffd75e" stroke-width="1" />
+</svg>

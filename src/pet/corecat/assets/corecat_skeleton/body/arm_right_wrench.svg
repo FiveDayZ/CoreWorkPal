@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <linearGradient id="armG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffb170"/>
+      <stop offset="50%" stop-color="#f28a3d"/>
+      <stop offset="100%" stop-color="#b64e19"/>
+    </linearGradient>
+    <linearGradient id="pawG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff6ee"/>
+      <stop offset="100%" stop-color="#eed0ba"/>
+    </linearGradient>
+    <linearGradient id="wrenchG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e3f2fd"/>
+      <stop offset="50%" stop-color="#90caf9"/>
+      <stop offset="100%" stop-color="#42a5f5"/>
+    </linearGradient>
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Right Arm with gradient -->
+  <path d="M114 86 C121 88 121 104 114 114 L110 121 C107 125 101 125 98 121 C95 117 95 105 99 97 Z" fill="url(#armG)"/>
+  
+  <!-- Cream paw tip -->
+  <path d="M112 116 L110 121 C107 125 101 125 103 121 L105 118 C107 121 112 122 112 116 Z" fill="url(#pawG)"/>
+  
+  <!-- Wrench handle & head extending from paw -->
+  <!-- Handle -->
+  <path d="M106 112 L120 126" stroke="#455a64" stroke-width="6" stroke-linecap="round"/>
+  <path d="M106 112 L120 126" stroke="#b0bec5" stroke-width="4" stroke-linecap="round"/>
+  <!-- Wrench Head -->
+  <circle cx="122" cy="128" r="9" fill="url(#wrenchG)" stroke="#37474f" stroke-width="1.5"/>
+  <path d="M117 133 L127 123" stroke="#1c2d3d" stroke-width="4.5" stroke-linecap="round"/>
+  
+  <!-- Neon power line on Wrench -->
+  <line x1="110" y1="116" x2="116" y2="122" stroke="#5ed0ff" stroke-width="1.5" stroke-linecap="round" filter="url(#neonGlow)"/>
+
+  <!-- Shoulder Joint -->
+  <circle cx="102" cy="92" r="5" fill="#2d3f52" stroke="#48607a" stroke-width="1.5"/>
+</svg>

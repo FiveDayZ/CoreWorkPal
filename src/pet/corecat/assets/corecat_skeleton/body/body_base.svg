@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+  <defs>
+    <!-- Rich Orange body gradient -->
+    <linearGradient id="bodyG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffb67b"/>
+      <stop offset="40%" stop-color="#f28a3d"/>
+      <stop offset="100%" stop-color="#b64e19"/>
+    </linearGradient>
+    <!-- Cream belly plate gradient -->
+    <linearGradient id="bellyG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff8f2"/>
+      <stop offset="100%" stop-color="#eed5c3"/>
+    </linearGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  
+  <!-- Outer Body Base Shadow / Ambient occlusion -->
+  <path d="M50 101 C50 81 63 71 80 71 C97 71 110 81 110 101 L110 116 C110 129 98 137 80 137 C62 137 50 129 50 116 Z" fill="#752e09" opacity="0.3"/>
+
+  <!-- Main Body Base Shape -->
+  <path d="M50 101 C50 82 63 72 80 72 C97 72 110 82 110 101 L110 115 C110 129 98 136 80 136 C62 136 50 129 50 115 Z" fill="url(#bodyG)"/>
+  
+  <!-- Fluffy/Volumetric Side Shading -->
+  <path d="M80 72 C97 73 110 84 110 103 L110 116 C110 129 98 136 80 136 C95 130 99 104 93 86 C89 78 84 74 80 72 Z" fill="#913608" opacity="0.25"/>
+
+  <!-- Belly Plate (Cream fur patch or mechanical chest plate) -->
+  <path d="M60 96 C60 86 68 82 80 82 C92 82 100 86 100 96 L100 112 C100 122 91 127 80 127 C69 127 60 122 60 112 Z" fill="url(#bellyG)"/>
+  
+  <!-- Neon Energy Core / Circuit Line on Chest -->
+  <path d="M80 88 L80 102 M73 95 L87 95" fill="none" stroke="#5ed0ff" stroke-width="3" stroke-linecap="round" filter="url(#neonGlow)"/>
+  <circle cx="80" cy="95" r="4.5" fill="none" stroke="#5ed0ff" stroke-width="1.5" filter="url(#neonGlow)"/>
+  <circle cx="80" cy="95" r="1.5" fill="#ffffff"/>
+
+  <!-- Subtle Top Highlight edge -->
+  <path d="M54 96 C56 82 66 76 80 76 C94 76 104 82 106 96" fill="none" stroke="#ffebd4" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+</svg>

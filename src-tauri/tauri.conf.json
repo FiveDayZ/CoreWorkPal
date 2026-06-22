@@ -1,0 +1,97 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CoreWorkPal",
+  "version": "0.1.0",
+  "identifier": "com.coreworkpal.desktop",
+  "build": {
+    "beforeDevCommand": "corepack pnpm dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "corepack pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "CoreWorkPal",
+        "url": "/main",
+        "width": 640,
+        "height": 420,
+        "decorations": false,
+        "resizable": false,
+        "visible": true,
+        "skipTaskbar": false
+      },
+      {
+        "label": "pet",
+        "title": "CoreCat",
+        "url": "/pet",
+        "width": 196,
+        "height": 166,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": true,
+        "shadow": false
+      },
+      {
+        "label": "monitor-bar",
+        "title": "CoreWorkPal Monitor",
+        "url": "/monitor-bar",
+        "width": 480,
+        "height": 42,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": true,
+        "shadow": false
+      },
+      {
+        "label": "taskbar-monitor",
+        "title": "CoreWorkPal Taskbar Monitor",
+        "url": "/taskbar-monitor",
+        "width": 520,
+        "height": 36,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "shadow": false
+      },
+      {
+        "label": "pet-panel",
+        "title": "CoreWorkPal Pet Panel",
+        "url": "/pet-panel",
+        "width": 300,
+        "height": 360,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "shadow": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
