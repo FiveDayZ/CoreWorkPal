@@ -93,7 +93,7 @@ graph TD
 │   └── tauri.conf.json       # Tauri 窗口大小、透明度及编译权限定义
 └── src/                      # 前端 (React 19 + TypeScript)
     ├── assets/               # 静态资源（像素风图标、动画帧序列）
-    ├── pages/                # 主界面多页面组件（控制台、工坊、设置、关于等）
+    ├── pages/                # 主界面多页面组件（控制台、设备、工坊、设置、关于等）
     ├── pet/                  # 桌面宠物模块（状态机、骨骼节点及粒子特效）
     ├── services/             # 状态计算公式、Tauri 命令桥接逻辑
     ├── stores/               # 状态管理跨窗口全局状态集
@@ -132,10 +132,18 @@ cargo test
 pnpm optimize:animations
 ```
 
-### 6. 构建正式安装包
+### 6. 构建前端静态资源包
 ```bash
 pnpm build
 ```
+
+### 7. 编译打包桌面端可执行文件 (.exe)
+```bash
+pnpm tauri build
+```
+编译完成后，生成的可执行文件与安装程序位于：
+* **免安装绿色版 EXE**: `src-tauri/target/release/core-work-pal.exe`
+* **NSIS 安装包**: `src-tauri/target/release/bundle/nsis/CoreWorkPal_0.1.0_x64-setup.exe`
 
 ---
 
