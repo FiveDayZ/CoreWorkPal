@@ -85,10 +85,10 @@
 - [x] 开源 Git 仓库模块集成：在关于页面底部增加了精美的“开源项目仓库 (Git Repository)”卡片，直接展示项目地址 `https://github.com/FiveDayZ/CoreWorkPal.git`，并提供了一键“复制地址”到系统剪贴板的功能。
 - [x] 页面高度自适应调整：修改 `.cwp-about-hero` 样式由固定 `height: 80px` 变更为 `min-height: 80px`，防止新增文本较长时产生底部文字截断，排版显示极其清爽完整。
 - [x] 全量项目上传 Git 仓库：
-  - 更新根目录 `.gitignore`，将 `.tmp/` 和 `.codegraph/` 过滤排除。
+  - 更新根目录 `.gitignore`，将 `.tmp/`、`.codegraph/`、`CoreWorkPalUI/` 和 `docs/` 过滤排除。
   - 在项目根目录下初始化 Git 仓库，自动暂存并提交所有项目源码。
   - 添加了远程 GitHub 地址：`https://github.com/FiveDayZ/CoreWorkPal.git`。
-  - 配置了局域网 Git Proxy 路由，成功将项目整体全量推送上传至 GitHub 主干仓库 `main` 分支。
+  - 配置了局域网 Git Proxy 路由，成功将项目整体全量推送上传至 GitHub 主干仓库 `main` 分支，且已通过 `git rm --cached` 将 `CoreWorkPalUI` 和 `docs` 目录从 Git 历史和远程仓库中完全移除。
 
 ## 可执行文件位置
 `src-tauri/target/release/core-work-pal.exe`
