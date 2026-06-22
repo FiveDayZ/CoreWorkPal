@@ -39,20 +39,18 @@
 
 以下是 CoreWorkPal 桌面伙伴的实际运行界面截图，采用精致的像素风双音色视觉设计：
 
-### 🖥️ 主控制台与设备清单
-| 主控制台及监控预览 | 本机硬件设备清单 |
-| :---: | :---: |
-| ![主控制台](src/assets/screenshots/console_dashboard.png) | ![设备清单](src/assets/screenshots/devices_page.png) |
+### 🖥️ 主控制台与核心监控
+![主控制台及监控预览](src/assets/screenshots/console_dashboard.png)
 
 ### 🛠️ 硬件养成工坊与模块升级
 | 迷你工坊主页 | 子模块升级详情 |
 | :---: | :---: |
 | ![工坊面板](src/assets/screenshots/workshop_page.png) | ![模块升级弹窗](src/assets/screenshots/module_detail.png) |
 
-### ⚙️ 精细化配置控制台与关于页面
-| 工坊配置控制台 | 关于工坊界面 |
+### ⚙️ 精细化配置控制台与日志审计
+| 工坊配置控制台 | 日志审计面板 |
 | :---: | :---: |
-| ![设置页面](src/assets/screenshots/settings_page.png) | ![关于页面](src/assets/screenshots/about_page.png) |
+| ![设置页面](src/assets/screenshots/settings_page.png) | ![日志面板](src/assets/screenshots/logs_page.png) |
 
 ---
 
