@@ -12,3 +12,6 @@ tauri-dev*.log
 final-*.png
 .tmp/
 .codegraph/
+CoreWorkPalUI/
+docs/
+
