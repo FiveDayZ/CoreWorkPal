@@ -3101,7 +3101,7 @@ label {
   margin-bottom: 6px;
   position: relative;
   overflow: hidden;
-  height: 80px;
+  min-height: 80px;
 }
 .cwp-about-hero-base {
   position: absolute;
