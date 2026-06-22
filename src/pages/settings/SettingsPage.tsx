@@ -298,6 +298,66 @@ export function SettingsPage() {
 
             </div>
 
+            {/* Card 3: Running setup */}
+            <div className="cwp-settings-card cwp-settings-card-runtime">
+              <div className="cwp-settings-card-title">
+                <PixelIcon name="energy" size={14} style={{ marginRight: "6px" }} /> 运行与特效
+              </div>
+              <div className="cwp-settings-switches-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: "2px" }}>
+                <div className="cwp-switch-item-inline">
+                  <span className="cwp-settings-label">低功耗</span>
+                  <label className="cwp-switch-label">
+                    <input
+                      type="checkbox"
+                      checked={settings?.enableLowPowerMode ?? false}
+                      onChange={(e) => void updateSettings({ enableLowPowerMode: e.target.checked })}
+                    />
+                    <span className="cwp-switch-slider" />
+                  </label>
+                </div>
+
+                <div className="cwp-switch-item-inline">
+                  <span className="cwp-settings-label">自启动</span>
+                  <label className="cwp-switch-label">
+                    <input
+                      type="checkbox"
+                      checked={settings?.launchAtStartup ?? false}
+                      onChange={(e) => void updateSettings({ launchAtStartup: e.target.checked })}
+                    />
+                    <span className="cwp-switch-slider" />
+                  </label>
+                </div>
+
+                <div className="cwp-switch-item-inline">
+                  <span className="cwp-settings-label">通知</span>
+                  <label className="cwp-switch-label">
+                    <input
+                      type="checkbox"
+                      checked={settings?.enableNotifications ?? false}
+                      onChange={(e) => void updateSettings({ enableNotifications: e.target.checked })}
+                    />
+                    <span className="cwp-switch-slider" />
+                  </label>
+                </div>
+              </div>
+
+              <div className="cwp-settings-row-inline" style={{ marginTop: "2px" }}>
+                <span className="cwp-settings-label">声音反馈</span>
+                <select
+                  className="cwp-custom-select"
+                  value={settings?.enableSound ? "enabled" : "none"}
+                  onChange={(e) => void updateSettings({ enableSound: e.target.value !== "none" })}
+                  style={{ height: "20px", padding: "0 4px" }}
+                >
+                  <option value="none">静音</option>
+                  <option value="enabled">开启音效</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Column 2: Run settings and Safety notes */}
+          <div className="cwp-settings-column">
             {/* Card 3: Taskbar data settings */}
             <div className="cwp-settings-card cwp-settings-card-taskbar">
               <div className="cwp-settings-card-title">
@@ -365,66 +425,6 @@ export function SettingsPage() {
                 </div>
               </div>
 
-            </div>
-          </div>
-
-          {/* Column 2: Run settings and Safety notes */}
-          <div className="cwp-settings-column">
-            {/* Card 3: Running setup */}
-            <div className="cwp-settings-card cwp-settings-card-runtime">
-              <div className="cwp-settings-card-title">
-                <PixelIcon name="energy" size={14} style={{ marginRight: "6px" }} /> 运行与音效
-              </div>
-              <div className="cwp-settings-switches-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: "2px" }}>
-                <div className="cwp-switch-item-inline">
-                  <span className="cwp-settings-label">低功耗</span>
-                  <label className="cwp-switch-label">
-                    <input
-                      type="checkbox"
-                      checked={settings?.enableLowPowerMode ?? false}
-                      onChange={(e) => void updateSettings({ enableLowPowerMode: e.target.checked })}
-                    />
-                    <span className="cwp-switch-slider" />
-                  </label>
-                </div>
-
-                <div className="cwp-switch-item-inline">
-                  <span className="cwp-settings-label">自启动</span>
-                  <label className="cwp-switch-label">
-                    <input
-                      type="checkbox"
-                      checked={settings?.launchAtStartup ?? false}
-                      onChange={(e) => void updateSettings({ launchAtStartup: e.target.checked })}
-                    />
-                    <span className="cwp-switch-slider" />
-                  </label>
-                </div>
-
-                <div className="cwp-switch-item-inline">
-                  <span className="cwp-settings-label">通知</span>
-                  <label className="cwp-switch-label">
-                    <input
-                      type="checkbox"
-                      checked={settings?.enableNotifications ?? false}
-                      onChange={(e) => void updateSettings({ enableNotifications: e.target.checked })}
-                    />
-                    <span className="cwp-switch-slider" />
-                  </label>
-                </div>
-              </div>
-
-              <div className="cwp-settings-row-inline" style={{ marginTop: "2px" }}>
-                <span className="cwp-settings-label">声音反馈</span>
-                <select
-                  className="cwp-custom-select"
-                  value={settings?.enableSound ? "enabled" : "none"}
-                  onChange={(e) => void updateSettings({ enableSound: e.target.value !== "none" })}
-                  style={{ height: "20px", padding: "0 4px" }}
-                >
-                  <option value="none">静音</option>
-                  <option value="enabled">开启音效</option>
-                </select>
-              </div>
             </div>
 
             <div className="cwp-settings-card cwp-settings-card-thresholds">

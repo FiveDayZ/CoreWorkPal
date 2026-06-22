@@ -2647,13 +2647,13 @@ label {
   order: 2;
 }
 .cwp-settings-card-runtime {
-  order: 3;
+  order: 5;
 }
 .cwp-settings-card-monitor {
   order: 4;
 }
 .cwp-settings-card-taskbar {
-  order: 5;
+  order: 3;
 }
 .cwp-settings-card-security {
   order: 6;
