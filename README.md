@@ -35,6 +35,26 @@
 
 ---
 
+## 📸 软件截图
+
+以下是 CoreWorkPal 桌面伙伴的实际运行界面截图，采用精致的像素风双音色（Dual-tone）视觉设计：
+
+### 🖥️ 主控制台与工坊升级
+![主控制台及监控预览](src/assets/screenshots/dashboard.png)
+
+### 🛠️ 硬件养成工坊与模块升级
+| 迷你工坊主页 (Workshop Page) | 子模块升级详情 (Module Detail) |
+| :---: | :---: |
+| ![工坊面板](src/assets/screenshots/workshop_page.png) | ![模块升级弹窗](src/assets/screenshots/module_detail.png) |
+
+### ⚙️ 精细化配置控制台与关于页面
+| 工坊配置控制台 (Settings Page) | 关于工坊界面 (About Page) |
+| :---: | :---: |
+| ![设置页面](src/assets/screenshots/settings_page.png) | ![关于页面](src/assets/screenshots/about_page.png) |
+
+---
+
+
 ## 🛠️ 技术架构
 
 ```mermaid
