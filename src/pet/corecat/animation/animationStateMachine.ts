@@ -103,6 +103,14 @@ export function getCoreCatTransitionMs(
     return durations.PanelClose_to_Idle;
   }
 
+  if (to === "pettingHearts") {
+    return durations.Any_to_PettingHearts;
+  }
+
+  if (from === "pettingHearts") {
+    return durations.PettingHearts_to_Idle;
+  }
+
   if (to === "errorGlitch") {
     return durations.Any_to_ErrorGlitch;
   }
@@ -299,6 +307,8 @@ export function getCoreCatOneShotDurationMs(
       return oneShot.panelCloseMs;
     case "panelOpen":
       return oneShot.panelOpenMs;
+    case "pettingHearts":
+      return oneShot.pettingHeartsMs;
     case "celebrate":
       return CORE_CAT_ANIMATION_CONFIG.celebrate.totalMs;
     case "workshopUpgrade":

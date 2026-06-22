@@ -5,6 +5,8 @@ import type { AppSettings, AppSettingsPatch } from "../types/settings";
 import type { WorkLogReport } from "../types/workLog";
 import { defaultModuleLevels, type WorkshopState } from "../types/workshop";
 
+export type CoreCatInteractionAction = "pet" | "sortParts";
+
 function isTauriRuntime() {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
@@ -22,8 +24,8 @@ const browserSettings: AppSettings = {
   enableStaticCatMode: false,
   enablePetBubble: true,
   showMonitorDataInTaskbar: true,
-  samplingIntervalMs: 1000,
-  backgroundSamplingIntervalMs: 3000,
+  samplingIntervalMs: 2000,
+  backgroundSamplingIntervalMs: 5000,
   dataSortingCpuThreshold: 40,
   catSize: 1,
   catOpacity: 0.95,
@@ -73,6 +75,17 @@ const browserSnapshot: HardwareSnapshot = {
   gpuMemoryTotalBytes: null,
   totalMemoryBytes: null,
   usedMemoryBytes: null,
+  cpuPhysicalCoreCount: null,
+  cpuLogicalCoreCount: null,
+  deviceInventory: {
+    motherboard: [],
+    memoryModules: [],
+    gpus: [],
+    displays: [],
+    disks: [],
+    audioDevices: [],
+    networkAdapters: [],
+  },
 };
 
 function todayKey() {
@@ -192,6 +205,24 @@ export async function getWorkshopState(): Promise<WorkshopState> {
   return invoke<WorkshopState>("get_workshop_state");
 }
 
+export async function rewardCoreCatInteraction(
+  action: CoreCatInteractionAction,
+): Promise<WorkshopState> {
+  if (!isTauriRuntime()) {
+    resetBrowserWorkshopDailyCounters();
+    if (action === "pet") {
+      browserWorkshop.insight += 0.01;
+      browserWorkshop.todayInsight += 0.01;
+    } else {
+      browserWorkshop.parts += 0.1;
+      browserWorkshop.todayParts += 0.1;
+    }
+    return { ...browserWorkshop };
+  }
+
+  return invoke<WorkshopState>("reward_corecat_interaction", { action });
+}
+
 export async function getWorkLogReport(date?: string): Promise<WorkLogReport> {
   if (!isTauriRuntime()) {
     return createBrowserWorkLogReport(date);
@@ -264,4 +295,15 @@ export async function updateWorkshopState(
   workshop: WorkshopState,
 ): Promise<WorkshopState> {
   return invoke<WorkshopState>("update_workshop_state", { workshop });
+}
+
+function resetBrowserWorkshopDailyCounters() {
+  const today = todayKey();
+  if (browserWorkshop.lastDailyResetDate === today) {
+    return;
+  }
+
+  browserWorkshop.todayParts = 0;
+  browserWorkshop.todayInsight = 0;
+  browserWorkshop.lastDailyResetDate = today;
 }

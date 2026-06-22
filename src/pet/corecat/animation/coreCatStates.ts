@@ -15,6 +15,7 @@ export const coreCatAnimationStates: CoreCatAnimationState[] = [
   "memoryCrowded",
   "repairing",
   "dataSorting",
+  "pettingHearts",
   "sleep",
   "celebrate",
   "workshopUpgrade",

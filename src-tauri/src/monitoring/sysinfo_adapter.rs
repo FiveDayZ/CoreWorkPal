@@ -6,7 +6,7 @@ use std::{
 use sysinfo::{Components, Networks, System};
 
 use crate::{
-    models::{current_timestamp_ms, HardwareSnapshot},
+    models::{current_timestamp_ms, HardwareDeviceInventory, HardwareSnapshot},
     monitoring::HardwareSensorAdapter,
 };
 
@@ -28,6 +28,7 @@ pub struct SysinfoAdapter {
     last_sample_at: Instant,
     cached_nvidia_sample: Option<NvidiaSmiSample>,
     last_nvidia_query_at: Option<Instant>,
+    cached_device_inventory: HardwareDeviceInventory,
     #[cfg(windows)]
     gpu_info: WindowsGpuInfo,
     #[cfg(windows)]
@@ -50,6 +51,7 @@ impl SysinfoAdapter {
             last_sample_at: Instant::now(),
             cached_nvidia_sample: None,
             last_nvidia_query_at: None,
+            cached_device_inventory: query_device_inventory().unwrap_or_default(),
             #[cfg(windows)]
             gpu_info: query_primary_gpu_info(),
             #[cfg(windows)]
@@ -201,6 +203,9 @@ impl HardwareSensorAdapter for SysinfoAdapter {
                 }),
             total_memory_bytes: Some(total_memory_bytes),
             used_memory_bytes: Some(used_memory_bytes),
+            cpu_physical_core_count: self.system.physical_core_count().map(|count| count as u32),
+            cpu_logical_core_count: Some(self.system.cpus().len() as u32),
+            device_inventory: self.cached_device_inventory.clone(),
         }
     }
 }
@@ -259,6 +264,131 @@ fn parse_mib(value: &str) -> Option<u64> {
         .ok()
         .filter(|value| value.is_finite() && *value >= 0.0)
         .map(|value| (value * 1024.0 * 1024.0).round() as u64)
+}
+
+#[cfg(windows)]
+fn query_device_inventory() -> Option<HardwareDeviceInventory> {
+    let script = r#"
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+function Clean($Value) {
+  if ($null -eq $Value) { return $null }
+  $Text = [string]$Value
+  if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+  return $Text.Trim()
+}
+function Capacity($Value) {
+  if ($null -eq $Value) { return $null }
+  try {
+    $Number = [double]$Value
+    if ([double]::IsNaN($Number) -or $Number -le 0) { return $null }
+    return [UInt64]$Number
+  } catch {
+    return $null
+  }
+}
+function Device($Name, $Detail, $Vendor, $CapacityBytes) {
+  $CleanName = Clean $Name
+  if ($null -eq $CleanName) { return $null }
+  return [ordered]@{
+    name = $CleanName
+    detail = Clean $Detail
+    vendor = Clean $Vendor
+    capacityBytes = Capacity $CapacityBytes
+  }
+}
+function DecodeMonitorString($Values) {
+  if ($null -eq $Values) { return $null }
+  $Chars = @()
+  foreach ($Value in $Values) {
+    if ($Value -eq 0) { break }
+    $Chars += [char][int]$Value
+  }
+  Clean (-join $Chars)
+}
+function IsVirtualDeviceName($Value) {
+  $Text = Clean $Value
+  if ($null -eq $Text) { return $false }
+  return $Text -match '(?i)virtual|remote|mirror|indirect|idd|oray|gameviewer|parsec|splashtop|spacedesk|dummy|basic render|basic display'
+}
+$DisplayWmi = @(Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorID -ErrorAction SilentlyContinue | Where-Object {
+  $_.Active -eq $true -and
+  (Clean $_.InstanceName) -like 'DISPLAY\*' -and
+  -not (IsVirtualDeviceName $_.InstanceName)
+} | ForEach-Object {
+  $Name = DecodeMonitorString $_.UserFriendlyName
+  if ($null -eq $Name) {
+    $Name = DecodeMonitorString $_.ProductCodeID
+  }
+  $Vendor = DecodeMonitorString $_.ManufacturerName
+  Device $Name $_.InstanceName $Vendor $null
+} | Where-Object { $_ -ne $null })
+$DisplayFallback = @(Get-CimInstance Win32_DesktopMonitor -ErrorAction SilentlyContinue | Where-Object {
+  (Clean $_.PNPDeviceID) -like 'DISPLAY\*' -and
+  -not (IsVirtualDeviceName $_.Name) -and
+  -not (IsVirtualDeviceName $_.PNPDeviceID) -and
+  (Clean $_.Name) -notmatch '(?i)^default monitor$'
+} | ForEach-Object {
+  $Detail = if ($_.ScreenWidth -and $_.ScreenHeight) { "$($_.ScreenWidth)x$($_.ScreenHeight)" } else { $_.PNPDeviceID }
+  Device $_.Name $Detail $_.MonitorManufacturer $null
+} | Where-Object { $_ -ne $null })
+$Inventory = [ordered]@{
+  motherboard = @(Get-CimInstance Win32_BaseBoard -ErrorAction SilentlyContinue | ForEach-Object {
+    $BoardName = @($_.Manufacturer, $_.Product) | ForEach-Object { Clean $_ } | Where-Object { $_ }
+    Device ($BoardName -join ' ') $_.SerialNumber $_.Manufacturer $null
+  } | Where-Object { $_ -ne $null })
+  memoryModules = @(Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue | ForEach-Object {
+    [ordered]@{
+      manufacturer = Clean $_.Manufacturer
+      partNumber = Clean $_.PartNumber
+      capacityBytes = Capacity $_.Capacity
+      speedMhz = if ($null -eq $_.Speed) { $null } else { [UInt32]$_.Speed }
+    }
+  })
+  gpus = @(Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Where-Object {
+    (Clean $_.PNPDeviceID) -like 'PCI\VEN_*' -and
+    -not (IsVirtualDeviceName $_.Name) -and
+    -not (IsVirtualDeviceName $_.AdapterCompatibility)
+  } | ForEach-Object {
+    Device $_.Name $_.DriverVersion $_.AdapterCompatibility $_.AdapterRAM
+  } | Where-Object { $_ -ne $null })
+  displays = @(if ($DisplayWmi.Count -gt 0) { $DisplayWmi } else { $DisplayFallback })
+  disks = @(Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue | ForEach-Object {
+    Device $_.Model $_.InterfaceType $_.Manufacturer $_.Size
+  } | Where-Object { $_ -ne $null })
+  audioDevices = @(Get-CimInstance Win32_SoundDevice -ErrorAction SilentlyContinue | ForEach-Object {
+    Device $_.Name $_.Status $_.Manufacturer $null
+  } | Where-Object { $_ -ne $null })
+  networkAdapters = @(Get-CimInstance Win32_NetworkAdapter -ErrorAction SilentlyContinue | Where-Object { $_.PhysicalAdapter -eq $true } | ForEach-Object {
+    $Detail = if ($_.NetConnectionID) { $_.NetConnectionID } else { $_.AdapterType }
+    Device $_.Name $Detail $_.Manufacturer $null
+  } | Where-Object { $_ -ne $null })
+}
+$Inventory | ConvertTo-Json -Depth 5 -Compress
+"#;
+
+    let mut command = Command::new("powershell.exe");
+    command.args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        script,
+    ]);
+    command.creation_flags(CREATE_NO_WINDOW);
+
+    let output = command.output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    serde_json::from_str::<HardwareDeviceInventory>(stdout.trim()).ok()
+}
+
+#[cfg(not(windows))]
+fn query_device_inventory() -> Option<HardwareDeviceInventory> {
+    Some(HardwareDeviceInventory::default())
 }
 
 #[cfg(not(windows))]

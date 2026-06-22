@@ -188,24 +188,30 @@ export function useCoreCatAnimation(options: UseCoreCatAnimationOptions) {
   }, []);
 
   useEffect(() => {
-    let animationFrame = 0;
+    let tickTimer: number | undefined;
     let disposed = false;
 
-    function tick(now: number) {
+    function tick() {
       if (disposed) {
         return;
       }
 
+      const now = performance.now();
       const nextFrame = sampleFrame(now);
       setFrame(nextFrame);
-      animationFrame = window.requestAnimationFrame(tick);
+      tickTimer = window.setTimeout(
+        tick,
+        getAnimationTickIntervalMs(optionsRef.current, reducedMotionRef.current),
+      );
     }
 
-    animationFrame = window.requestAnimationFrame(tick);
+    tick();
 
     return () => {
       disposed = true;
-      window.cancelAnimationFrame(animationFrame);
+      if (tickTimer != null) {
+        window.clearTimeout(tickTimer);
+      }
     };
   }, []);
 
@@ -532,6 +538,34 @@ function createClickStars(): CoreCatStarParticle[] {
 
 function randomInRange(min: number, max: number) {
   return min + Math.random() * (max - min);
+}
+
+function getAnimationTickIntervalMs(
+  options: UseCoreCatAnimationOptions,
+  reducedMotion: boolean,
+) {
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+    return 1000;
+  }
+
+  if (options.staticMode || reducedMotion) {
+    return 500;
+  }
+
+  if (options.lowPowerMode) {
+    return 250;
+  }
+
+  if (
+    options.isDragging ||
+    options.isClicking ||
+    options.pointerInside ||
+    options.interactionStateOverride
+  ) {
+    return 50;
+  }
+
+  return 83;
 }
 
 function emitLoopVfxCues(

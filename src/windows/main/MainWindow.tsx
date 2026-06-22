@@ -19,7 +19,8 @@ import {
 import { PixelIcon, type PixelIconName } from "../../ui/PixelIcon";
 
 const routeLabels: Record<MainRoute, { icon: PixelIconName; text: string }> = {
-  dashboard: { icon: "home", text: "控制台" },
+  dashboard: { icon: "dashboard", text: "控制台" },
+  devices: { icon: "devices", text: "设备" },
   workshop: { icon: "tools", text: "工坊" },
   settings: { icon: "settings", text: "设置" },
   workLog: { icon: "log", text: "日志" },

@@ -38,6 +38,8 @@ interface ModuleData {
   statEn: string;
   partsRule: string;
   processRule: string;
+  resourceKind: "parts" | "insight";
+  resourceRateText: string;
 }
 
 const MAX_WORKSHOP_LEVEL = 100;
@@ -154,6 +156,7 @@ export function WorkshopPage() {
                     style={{ width: `${module.progress}%` }}
                   />
                 </div>
+                <ModuleResourceRate module={module} />
                 <div className="cwp-module-stat-row">
                   <span>{module.statZh}</span>
                   <span>{module.statEn}</span>
@@ -283,6 +286,20 @@ export function WorkshopPage() {
   );
 }
 
+function ModuleResourceRate({ module }: { module: ModuleData }) {
+  const isInsight = module.resourceKind === "insight";
+  return (
+    <div
+      className={`cwp-module-resource-rate ${
+        isInsight ? "is-insight" : "is-parts"
+      }`}
+    >
+      <span>{isInsight ? "灵感生成" : "零件生成"}</span>
+      <strong>{module.resourceRateText}</strong>
+    </div>
+  );
+}
+
 function GainItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="cwp-gains-item">
@@ -353,6 +370,36 @@ function buildModules(
     settings?.cpuTemperatureWarning ?? 80,
     settings?.gpuTemperatureWarning ?? 82,
   );
+  const gpuMemory = ratioProgress(
+    snapshot?.gpuMemoryUsedBytes ?? null,
+    snapshot?.gpuMemoryTotalBytes ?? null,
+  );
+  const cpuPartsPace = resourcePaceFromPercent(cpu, levels.cpu, 5.0, 2.5);
+  const gpuPartsPace = resourcePaceFromPercent(
+    weightedPercent(gpu, gpuMemory, 0.72),
+    levels.gpu,
+    4.0,
+    2.0,
+  );
+  const ramPartsPace = resourcePaceFromPercent(ram, levels.ram, 4.5, 2.0);
+  const networkInsightPace = resourcePaceFromPercent(
+    throughputProgress(networkBytes),
+    levels.network,
+    3.6,
+    7.2,
+  );
+  const thermalPartsPace = resourcePaceFromPercent(
+    100 - clamp((maxTemp / tempWarning) * 100, 0, 100),
+    levels.temperature,
+    2.0,
+    3.5,
+  );
+  const diskInsightPace = resourcePaceFromPercent(
+    throughputProgress(diskBytes),
+    levels.disk,
+    3.2,
+    5.6,
+  );
 
   return [
     {
@@ -368,6 +415,8 @@ function buildModules(
       statEn: `零件 +${moduleBonus(levels.cpu, 5.0, 2.5)}%`,
       partsRule: "提升 CPU 对零件产出的转化率。",
       processRule: "降低高负载下的产出抖动。",
+      resourceKind: "parts",
+      resourceRateText: formatResourceRate(cpuPartsPace, "parts"),
     },
     {
       key: "gpu",
@@ -382,6 +431,8 @@ function buildModules(
       statEn: `零件 +${moduleBonus(levels.gpu, 4.0, 2.0)}%`,
       partsRule: "提高渲染平台对零件打磨的辅助效率。",
       processRule: "提高 GPU 对零件的产出率。",
+      resourceKind: "parts",
+      resourceRateText: formatResourceRate(gpuPartsPace, "parts"),
     },
     {
       key: "ram",
@@ -399,6 +450,8 @@ function buildModules(
       statEn: `零件 +${moduleBonus(levels.ram, 4.5, 2.0)}%`,
       partsRule: "扩大零件仓储吞吐，提升 RAM 对产出的贡献。",
       processRule: "缓解内存拥挤惩罚，保持产出稳定。",
+      resourceKind: "parts",
+      resourceRateText: formatResourceRate(ramPartsPace, "parts"),
     },
     {
       key: "network",
@@ -413,6 +466,8 @@ function buildModules(
       statEn: `灵感 +${moduleBonus(levels.network, 3.6, 7.2)}%`,
       partsRule: "提升网络物流对灵感获取的贡献。",
       processRule: "提升网络蓝图交换带来的灵感。",
+      resourceKind: "insight",
+      resourceRateText: formatResourceRate(networkInsightPace, "insight"),
     },
     {
       key: "temperature",
@@ -427,6 +482,8 @@ function buildModules(
       statEn: `稳定 +${moduleBonus(levels.temperature, 2.0, 3.5)}%`,
       partsRule: "提升散热组件耐久，减少零件产出损耗。",
       processRule: "降低温度惩罚，保持灵感稳定。",
+      resourceKind: "parts",
+      resourceRateText: formatResourceRate(thermalPartsPace, "parts"),
     },
     {
       key: "disk",
@@ -441,6 +498,8 @@ function buildModules(
       statEn: `灵感 +${moduleBonus(levels.disk, 3.2, 5.6)}%`,
       partsRule: "提高归档读写对灵感整理的收益。",
       processRule: "提升数据归档带来的灵感回收。",
+      resourceKind: "insight",
+      resourceRateText: formatResourceRate(diskInsightPace, "insight"),
     },
   ];
 }
@@ -527,6 +586,52 @@ function percentProgress(value: number | null | undefined) {
 function throughputProgress(bytesPerSecond: number) {
   const mib = Math.max(0, bytesPerSecond) / 1024 / 1024;
   return clamp((Math.log1p(mib) / Math.log1p(64)) * 100, 0, 100);
+}
+
+function ratioProgress(used: number | null, total: number | null) {
+  if (used == null || total == null || total <= 0) {
+    return null;
+  }
+
+  return clamp((used / total) * 100, 0, 100);
+}
+
+function weightedPercent(
+  primary: number | null | undefined,
+  secondary: number | null,
+  primaryWeight: number,
+) {
+  if (primary == null && secondary == null) {
+    return null;
+  }
+
+  const safePrimary = primary ?? 0;
+  const safeSecondary = secondary ?? 0;
+  return safePrimary * primaryWeight + safeSecondary * (1 - primaryWeight);
+}
+
+function resourcePaceFromPercent(
+  value: number | null | undefined,
+  levels: ModuleUpgradeLevels,
+  partsWeight: number,
+  processWeight: number,
+) {
+  const levelBonus = moduleBonus(levels, partsWeight, processWeight);
+  return clamp((value ?? 0) * (1 + levelBonus / 100), 0, 100);
+}
+
+function formatResourceRate(
+  progress: number,
+  resourceKind: "parts" | "insight",
+) {
+  const baseRate = resourceKind === "parts" ? 1.2 : 0.08;
+  const rate = baseRate * (0.25 + progress / 100);
+
+  if (resourceKind === "parts") {
+    return `+${rate.toFixed(rate >= 10 ? 0 : 1)}/min`;
+  }
+
+  return `+${rate.toFixed(2)}/min`;
 }
 
 function clamp(value: number, min: number, max: number) {

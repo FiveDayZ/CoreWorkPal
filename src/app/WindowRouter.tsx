@@ -7,7 +7,7 @@ import { TaskbarMonitorWindow } from "../windows/taskbar-monitor/TaskbarMonitorW
 
 type WindowLabel = "main" | "pet" | "monitor-bar" | "pet-panel" | "taskbar-monitor";
 
-function getWindowLabel(): WindowLabel {
+export function getWindowLabel(): WindowLabel {
   try {
     const label = getCurrentWindow().label;
     if (

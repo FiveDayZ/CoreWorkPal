@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { bootstrapApp } from "./bootstrap";
-import { WindowRouter } from "./WindowRouter";
+import { getWindowLabel, WindowRouter } from "./WindowRouter";
 import { useSettingsStore } from "../stores/settingsStore";
 
 export function AppShell() {
+  const windowLabel = getWindowLabel();
   const settings = useSettingsStore((state) => state.settings);
 
-  useEffect(() => bootstrapApp(), []);
+  useEffect(() => bootstrapApp(windowLabel), [windowLabel]);
 
   useEffect(() => {
     if (!settings?.themeName) {

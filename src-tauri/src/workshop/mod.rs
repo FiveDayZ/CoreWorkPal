@@ -141,19 +141,6 @@ fn throughput_score(bytes_per_second: f64) -> f64 {
     (mib_per_second.ln_1p() / 64.0_f64.ln_1p()).clamp(0.0, 1.0)
 }
 
-fn thermal_balance(settings: &AppSettings, snapshot: &HardwareSnapshot) -> f64 {
-    let cpu_balance = snapshot
-        .cpu_temperature_celsius
-        .map(|temp| 1.0 - (temp as f64 / settings.cpu_temperature_warning.max(1.0) as f64))
-        .unwrap_or(0.65);
-    let gpu_balance = snapshot
-        .gpu_temperature_celsius
-        .map(|temp| 1.0 - (temp as f64 / settings.gpu_temperature_warning.max(1.0) as f64))
-        .unwrap_or(0.65);
-
-    ((cpu_balance + gpu_balance) / 2.0).clamp(0.0, 1.0)
-}
-
 fn module_bonus(modules: &[(&ModuleUpgradeLevels, f64, f64)]) -> f64 {
     modules
         .iter()

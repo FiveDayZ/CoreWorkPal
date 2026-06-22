@@ -7,14 +7,13 @@ import { playAudioFeedback } from "../../services/audioFeedback";
 import {
   hidePetPanel,
   hidePetWindow,
+  rewardCoreCatInteraction,
   saveWindowPosition,
   showMainRoute,
-  toggleMonitorBar,
+  showPetPanel,
 } from "../../services/tauriCommands";
 import {
-  openMainWindow,
   startDraggingCurrentWindow,
-  toggleQuickPanel,
 } from "../../services/windowApi";
 import { useHardwareStore } from "../../stores/hardwareStore";
 import { usePetStore } from "../../stores/petStore";
@@ -80,7 +79,6 @@ export function PetWindow() {
   const snapshot = useHardwareStore((state) => state.snapshot);
   const catState = usePetStore((state) => state.catState);
   const catMessage = usePetStore((state) => state.catMessage);
-  const isPanelOpen = usePetStore((state) => state.isPanelOpen);
   const markPanelOpen = usePetStore((state) => state.openPanel);
   const markPanelClosed = usePetStore((state) => state.closePanel);
   const settings = useSettingsStore((state) => state.settings);
@@ -167,8 +165,13 @@ export function PetWindow() {
   }, []);
 
   const getInteractionDurationMs = useCallback(
-    (state: CoreCatAnimationState) =>
-      getSpriteSheetOneShotDurationMs(state) ?? getCoreCatOneShotDurationMs(state),
+    (state: CoreCatAnimationState) => {
+      if (state === "dataSorting") {
+        return 5000;
+      }
+
+      return getSpriteSheetOneShotDurationMs(state) ?? getCoreCatOneShotDurationMs(state);
+    },
     [],
   );
 
@@ -594,6 +597,12 @@ export function PetWindow() {
     window.setTimeout(() => setIsNodding(false), 300);
   }
 
+  function triggerRewardAction(action: "pet" | "sortParts") {
+    void rewardCoreCatInteraction(action).catch((error) => {
+      console.error("Failed to reward CoreCat interaction:", error);
+    });
+  }
+
   function handlePointerMove(event: MouseEvent<HTMLDivElement>) {
     const hoverHitArea = resolveCoreCatHoverHitArea(
       event.clientX,
@@ -735,8 +744,8 @@ export function PetWindow() {
           items={[
             {
               key: "main",
-              label: "打开主工坊",
-              onClick: () => runContextMenuAction(() => void openMainWindow()),
+              label: "打开工坊",
+              onClick: () => runContextMenuAction(() => void showMainRoute("workshop")),
             },
             {
               key: "settings",
@@ -744,23 +753,23 @@ export function PetWindow() {
               onClick: () => runContextMenuAction(() => void showMainRoute("settings")),
             },
             {
-              key: "about",
-              label: "关于",
-              onClick: () => runContextMenuAction(() => void showMainRoute("about")),
-            },
-            {
-              key: "monitor",
-              label: "显示/隐藏监控条",
-              onClick: () => runContextMenuAction(() => void toggleMonitorBar()),
-            },
-            {
               key: "panel",
-              label: isPanelOpen ? "收起面板" : "打开面板",
-              onClick: () => runContextMenuAction(() => void toggleQuickPanel()),
+              label: "打开面板",
+              onClick: () => runContextMenuAction(() => void showPetPanel()),
+            },
+            {
+              key: "pet",
+              label: "抚摸猫咪",
+              onClick: () => runContextMenuAction(() => triggerRewardAction("pet")),
+            },
+            {
+              key: "sort-parts",
+              label: "整理零件",
+              onClick: () => runContextMenuAction(() => triggerRewardAction("sortParts")),
             },
             {
               key: "hide",
-              label: "隐藏 CoreCat",
+              label: "隐藏 coreCat",
               danger: true,
               onClick: () => runContextMenuAction(() => void hidePetWindow()),
             },

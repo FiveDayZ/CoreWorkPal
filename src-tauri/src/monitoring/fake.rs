@@ -1,5 +1,8 @@
 use crate::{
-    models::{current_timestamp_ms, HardwareSnapshot},
+    models::{
+        current_timestamp_ms, HardwareDeviceInfo, HardwareDeviceInventory, HardwareSnapshot,
+        MemoryModuleInfo,
+    },
     monitoring::HardwareSensorAdapter,
 };
 
@@ -37,6 +40,64 @@ impl HardwareSensorAdapter for FakeHardwareSensorAdapter {
             gpu_memory_total_bytes: Some(8 * 1024 * 1024 * 1024),
             total_memory_bytes: Some(16 * 1024 * 1024 * 1024),
             used_memory_bytes: Some(((memory / 100.0) * 16.0 * 1024.0 * 1024.0 * 1024.0) as u64),
+            cpu_physical_core_count: Some(8),
+            cpu_logical_core_count: Some(16),
+            device_inventory: fake_device_inventory(),
         }
+    }
+}
+
+fn fake_device_inventory() -> HardwareDeviceInventory {
+    HardwareDeviceInventory {
+        motherboard: vec![HardwareDeviceInfo {
+            name: "CoreWorkPal Dev Board".to_string(),
+            detail: Some("CW-2026".to_string()),
+            vendor: Some("CoreWorkPal".to_string()),
+            capacity_bytes: None,
+        }],
+        memory_modules: vec![
+            MemoryModuleInfo {
+                manufacturer: Some("CoreWork".to_string()),
+                part_number: Some("DDR5-A".to_string()),
+                capacity_bytes: Some(8 * 1024 * 1024 * 1024),
+                speed_mhz: Some(4800),
+            },
+            MemoryModuleInfo {
+                manufacturer: Some("CoreWork".to_string()),
+                part_number: Some("DDR5-B".to_string()),
+                capacity_bytes: Some(8 * 1024 * 1024 * 1024),
+                speed_mhz: Some(4800),
+            },
+        ],
+        gpus: vec![HardwareDeviceInfo {
+            name: "Fake GPU".to_string(),
+            detail: Some("Driver 1.0".to_string()),
+            vendor: Some("CoreWorkPal".to_string()),
+            capacity_bytes: Some(8 * 1024 * 1024 * 1024),
+        }],
+        displays: vec![HardwareDeviceInfo {
+            name: "CoreWorkPal Preview Display".to_string(),
+            detail: Some("1920x1080".to_string()),
+            vendor: None,
+            capacity_bytes: None,
+        }],
+        disks: vec![HardwareDeviceInfo {
+            name: "CoreWorkPal Virtual SSD".to_string(),
+            detail: Some("NVMe".to_string()),
+            vendor: None,
+            capacity_bytes: Some(512 * 1024 * 1024 * 1024),
+        }],
+        audio_devices: vec![HardwareDeviceInfo {
+            name: "CoreWorkPal Audio Device".to_string(),
+            detail: Some("OK".to_string()),
+            vendor: None,
+            capacity_bytes: None,
+        }],
+        network_adapters: vec![HardwareDeviceInfo {
+            name: "CoreWorkPal Network Adapter".to_string(),
+            detail: Some("Ethernet".to_string()),
+            vendor: None,
+            capacity_bytes: None,
+        }],
     }
 }

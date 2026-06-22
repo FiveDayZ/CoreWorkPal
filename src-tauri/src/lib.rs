@@ -43,6 +43,7 @@ pub fn run() {
             commands::get_app_settings,
             commands::update_app_settings,
             commands::get_workshop_state,
+            commands::reward_corecat_interaction,
             commands::get_work_log_report,
             commands::toggle_production_paused,
             commands::show_main_window,

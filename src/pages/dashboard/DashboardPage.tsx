@@ -15,10 +15,12 @@ import { useThemedIcons } from "../../ui/assets";
 import { playAudioFeedback } from "../../services/audioFeedback";
 import { calculateSystemStability } from "../../services/systemStability";
 import { PixelIcon } from "../../ui/PixelIcon";
+import { rewardCoreCatInteraction } from "../../services/tauriCommands";
 
 export function DashboardPage() {
   const snapshot = useHardwareStore((state) => state.snapshot);
   const workshop = useWorkshopStore((state) => state.state);
+  const setWorkshopState = useWorkshopStore((state) => state.setWorkshopState);
   const settings = useSettingsStore((state) => state.settings);
   const catState = usePetStore((state) => state.catState);
   const catMessage = usePetStore((state) => state.catMessage);
@@ -50,16 +52,26 @@ export function DashboardPage() {
     }
   };
 
-  const handlePetCat = () => {
+  const handlePetCat = async () => {
     playAudioFeedback("meow", settings?.enableSound ?? false);
     setLocalBubble("喵呜~ 今天也要加油工作呀！");
     setTimeout(() => setLocalBubble(null), 3000);
+    try {
+      setWorkshopState(await rewardCoreCatInteraction("pet"));
+    } catch (error) {
+      console.error("Failed to reward CoreCat pet interaction:", error);
+    }
   };
 
-  const handleCleanParts = () => {
+  const handleCleanParts = async () => {
     playAudioFeedback("click", settings?.enableSound ?? false);
-    setLocalBubble("工坊运转正常，我守着呢。");
+    setLocalBubble("零件仓库已整理，库存 +0.1。");
     setTimeout(() => setLocalBubble(null), 3000);
+    try {
+      setWorkshopState(await rewardCoreCatInteraction("sortParts"));
+    } catch (error) {
+      console.error("Failed to reward CoreCat sort-parts interaction:", error);
+    }
   };
 
   const cpuVal = snapshot?.cpuUsagePercent ?? 0;
@@ -119,188 +131,189 @@ export function DashboardPage() {
         <h2 className="page-title">工坊控制台</h2>
       </div>
 
-      <div className="cwp-dashboard-grid">
-        {/* Left Hero Card */}
-        <div className="cwp-hero-card">
-          <div className="cwp-hero-base-light" />
-          <div className="cwp-hero-speech-container">
-            <div className="cwp-hero-bubble">
-              {localBubble || catMessage || "正在全力监控您的工作区..."}
+      <div className="cwp-dashboard-content">
+          <div className="cwp-dashboard-grid">
+            {/* Left Hero Card */}
+            <div className="cwp-hero-card">
+              <div className="cwp-hero-base-light" />
+              <div className="cwp-hero-speech-container">
+                <div className="cwp-hero-bubble">
+                  {localBubble || catMessage || "正在全力监控您的工作区..."}
+                </div>
+              </div>
+              <div className="cwp-hero-pet-canvas">
+                <img
+                  src={icons.corecatAvatar}
+                  alt="Hero Companion"
+                  className="cwp-hero-pet-img"
+                />
+              </div>
+              <div className="cwp-hero-status-row">
+                <span>当前状态:</span>
+                <span className="cwp-hero-status-tag">{getCatStatusText()}</span>
+              </div>
+              <div className="cwp-hero-quick-actions">
+                <button className="cwp-hero-btn" onClick={handlePetCat} type="button">
+                  抚摸猫咪
+                </button>
+                <button className="cwp-hero-btn" onClick={handleCleanParts} type="button">
+                  整理零件
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="cwp-hero-pet-canvas">
-            <img
-              src={icons.corecatAvatar}
-              alt="Hero Companion"
-              className="cwp-hero-pet-img"
-            />
-          </div>
-          <div className="cwp-hero-status-row">
-            <span>当前状态:</span>
-            <span className="cwp-hero-status-tag">{getCatStatusText()}</span>
-          </div>
-          <div className="cwp-hero-quick-actions">
-            <button className="cwp-hero-btn" onClick={handlePetCat} type="button">
-              抚摸猫咪
-            </button>
-            <button className="cwp-hero-btn" onClick={handleCleanParts} type="button">
-              整理零件
-            </button>
-          </div>
-        </div>
 
-        {/* Right 6 Metric Cards */}
-        <div className="cwp-metric-grid">
-          {/* CPU */}
-          <div className="cwp-metric-card-new">
-            <div className="cwp-card-top">
-              <div className="cwp-card-title-grp">
-                <span className="cwp-card-title-zh">CPU 核心工作台</span>
-                <span className="cwp-card-title-en">CPU Workbench</span>
+            {/* Right 6 Metric Cards */}
+            <div className="cwp-metric-grid">
+              {/* CPU */}
+              <div className="cwp-metric-card-new">
+                <div className="cwp-card-top">
+                  <div className="cwp-card-title-grp">
+                    <span className="cwp-card-title-zh">CPU 核心工作台</span>
+                    <span className="cwp-card-title-en">CPU Workbench</span>
+                  </div>
+                  <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="cpu" size={16} /></div>
+                </div>
+                <div className="cwp-card-mid">
+                  <span className="cwp-card-val">{formatPercent(snapshot?.cpuUsagePercent ?? null)}</span>
+                  <span className={`cwp-card-badge ${cpuClass}`}>{cpuBadge}</span>
+                </div>
+                <div className="cwp-card-bottom">
+                  <div className="cwp-card-progress-bar">
+                    <div className="cwp-card-progress-fill" style={{ width: `${cpuVal}%` }} />
+                  </div>
+                  <div className="cwp-card-subtext">
+                    <span>温度: {formatTemperature(snapshot?.cpuTemperatureCelsius ?? null)}</span>
+                    <span>线程活跃</span>
+                  </div>
+                </div>
               </div>
-              <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="cpu" size={16} /></div>
-            </div>
-            <div className="cwp-card-mid">
-              <span className="cwp-card-val">{formatPercent(snapshot?.cpuUsagePercent ?? null)}</span>
-              <span className={`cwp-card-badge ${cpuClass}`}>{cpuBadge}</span>
-            </div>
-            <div className="cwp-card-bottom">
-              <div className="cwp-card-progress-bar">
-                <div className="cwp-card-progress-fill" style={{ width: `${cpuVal}%` }} />
+
+              {/* GPU */}
+              <div className="cwp-metric-card-new">
+                <div className="cwp-card-top">
+                  <div className="cwp-card-title-grp">
+                    <span className="cwp-card-title-zh">GPU 渲染流水线</span>
+                    <span className="cwp-card-title-en">GPU Graphic Bench</span>
+                  </div>
+                  <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="gpu" size={16} /></div>
+                </div>
+                <div className="cwp-card-mid">
+                  <span className="cwp-card-val">{formatPercent(snapshot?.gpuUsagePercent ?? null)}</span>
+                  <span className={`cwp-card-badge ${gpuClass}`}>{gpuBadge}</span>
+                </div>
+                <div className="cwp-card-bottom">
+                  <div className="cwp-card-progress-bar">
+                    <div className="cwp-card-progress-fill" style={{ width: `${gpuVal}%` }} />
+                  </div>
+                  <div className="cwp-card-subtext">
+                    <span>显存: {gpuMemoryText}</span>
+                    <span>温度: {formatTemperature(snapshot?.gpuTemperatureCelsius ?? null)}</span>
+                  </div>
+                </div>
               </div>
-              <div className="cwp-card-subtext">
-                <span>温度: {formatTemperature(snapshot?.cpuTemperatureCelsius ?? null)}</span>
-                <span>线程活跃</span>
+
+              {/* RAM */}
+              <div className="cwp-metric-card-new">
+                <div className="cwp-card-top">
+                  <div className="cwp-card-title-grp">
+                    <span className="cwp-card-title-zh">RAM 零件仓库</span>
+                    <span className="cwp-card-title-en">RAM Parts Warehouse</span>
+                  </div>
+                  <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="ram" size={16} /></div>
+                </div>
+                <div className="cwp-card-mid">
+                  <span className="cwp-card-val">{formatPercent(snapshot?.memoryUsagePercent ?? null)}</span>
+                  <span className={`cwp-card-badge ${ramClass}`}>{ramBadge}</span>
+                </div>
+                <div className="cwp-card-bottom">
+                  <div className="cwp-card-progress-bar">
+                    <div className="cwp-card-progress-fill" style={{ width: `${ramVal}%` }} />
+                  </div>
+                  <div className="cwp-card-subtext">
+                    <span>内存: {ramMemoryText}</span>
+                    <span>缓存就绪</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* NET */}
+              <div className="cwp-metric-card-new">
+                <div className="cwp-card-top">
+                  <div className="cwp-card-title-grp">
+                    <span className="cwp-card-title-zh">NET 数据传输站</span>
+                    <span className="cwp-card-title-en">Net Transfer Station</span>
+                  </div>
+                  <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="energy" size={16} /></div>
+                </div>
+                <div className="cwp-card-mid">
+                  <span className="cwp-card-val">
+                    {formatBytesPerSecond(snapshot?.networkDownloadBytesPerSecond ?? null)}
+                  </span>
+                  <span className="cwp-card-badge cwp-badge-normal">流畅</span>
+                </div>
+                <div className="cwp-card-bottom">
+                  <div className="cwp-card-progress-bar">
+                    <div className="cwp-card-progress-fill" style={{ width: `${networkLevel}%` }} />
+                  </div>
+                  <div className="cwp-card-subtext">
+                    <span>上传: {formatBytesPerSecond(snapshot?.networkUploadBytesPerSecond ?? null)}</span>
+                    <span>下载: {formatBytesPerSecond(snapshot?.networkDownloadBytesPerSecond ?? null)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* TEMP */}
+              <div className="cwp-metric-card-new">
+                <div className="cwp-card-top">
+                  <div className="cwp-card-title-grp">
+                    <span className="cwp-card-title-zh">TEMP 冷却风扇墙</span>
+                    <span className="cwp-card-title-en">Temp Cooling Wall</span>
+                  </div>
+                  <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="temp" size={16} /></div>
+                </div>
+                <div className="cwp-card-mid">
+                  <span className="cwp-card-val">{formatTemperature(snapshot?.cpuTemperatureCelsius ?? null)}</span>
+                  <span className={`cwp-card-badge ${tempClass}`}>{tempBadge}</span>
+                </div>
+                <div className="cwp-card-bottom">
+                  <div className="cwp-card-progress-bar">
+                    <div className="cwp-card-progress-fill" style={{ width: `${clampPercent(tempLevel)}%`, background: "var(--color-brand-orange)" }} />
+                  </div>
+                  <div className="cwp-card-subtext">
+                    <span>CPU: {formatTemperature(snapshot?.cpuTemperatureCelsius ?? null)}</span>
+                    <span>GPU: {formatTemperature(snapshot?.gpuTemperatureCelsius ?? null)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DISK */}
+              <div className="cwp-metric-card-new">
+                <div className="cwp-card-top">
+                  <div className="cwp-card-title-grp">
+                    <span className="cwp-card-title-zh">DISK 数据归档柜</span>
+                    <span className="cwp-card-title-en">Disk Archive Cabinet</span>
+                  </div>
+                  <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="disk" size={16} /></div>
+                </div>
+                <div className="cwp-card-mid">
+                  <span className="cwp-card-val">62%</span>
+                  <span className="cwp-card-badge cwp-badge-normal">宽敞</span>
+                </div>
+                <div className="cwp-card-bottom">
+                  <div className="cwp-card-progress-bar">
+                    <div className="cwp-card-progress-fill" style={{ width: `${diskLevel}%` }} />
+                  </div>
+                  <div className="cwp-card-subtext">
+                    <span>读取: {formatBytesPerSecond(snapshot?.diskReadBytesPerSecond ?? null)}</span>
+                    <span>写入: {formatBytesPerSecond(snapshot?.diskWriteBytesPerSecond ?? null)}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* GPU */}
-          <div className="cwp-metric-card-new">
-            <div className="cwp-card-top">
-              <div className="cwp-card-title-grp">
-                <span className="cwp-card-title-zh">GPU 渲染流水线</span>
-                <span className="cwp-card-title-en">GPU Graphic Bench</span>
-              </div>
-              <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="gpu" size={16} /></div>
-            </div>
-            <div className="cwp-card-mid">
-              <span className="cwp-card-val">{formatPercent(snapshot?.gpuUsagePercent ?? null)}</span>
-              <span className={`cwp-card-badge ${gpuClass}`}>{gpuBadge}</span>
-            </div>
-            <div className="cwp-card-bottom">
-              <div className="cwp-card-progress-bar">
-                <div className="cwp-card-progress-fill" style={{ width: `${gpuVal}%` }} />
-              </div>
-              <div className="cwp-card-subtext">
-                <span>显存: {gpuMemoryText}</span>
-                <span>温度: {formatTemperature(snapshot?.gpuTemperatureCelsius ?? null)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* RAM */}
-          <div className="cwp-metric-card-new">
-            <div className="cwp-card-top">
-              <div className="cwp-card-title-grp">
-                <span className="cwp-card-title-zh">RAM 零件仓库</span>
-                <span className="cwp-card-title-en">RAM Parts Warehouse</span>
-              </div>
-              <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="ram" size={16} /></div>
-            </div>
-            <div className="cwp-card-mid">
-              <span className="cwp-card-val">{formatPercent(snapshot?.memoryUsagePercent ?? null)}</span>
-              <span className={`cwp-card-badge ${ramClass}`}>{ramBadge}</span>
-            </div>
-            <div className="cwp-card-bottom">
-              <div className="cwp-card-progress-bar">
-                <div className="cwp-card-progress-fill" style={{ width: `${ramVal}%` }} />
-              </div>
-              <div className="cwp-card-subtext">
-                <span>内存: {ramMemoryText}</span>
-                <span>缓存就绪</span>
-              </div>
-            </div>
-          </div>
-
-          {/* NET */}
-          <div className="cwp-metric-card-new">
-            <div className="cwp-card-top">
-              <div className="cwp-card-title-grp">
-                <span className="cwp-card-title-zh">NET 数据传输站</span>
-                <span className="cwp-card-title-en">Net Transfer Station</span>
-              </div>
-              <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="energy" size={16} /></div>
-            </div>
-            <div className="cwp-card-mid">
-              <span className="cwp-card-val">
-                {formatBytesPerSecond(snapshot?.networkDownloadBytesPerSecond ?? null)}
-              </span>
-              <span className="cwp-card-badge cwp-badge-normal">流畅</span>
-            </div>
-            <div className="cwp-card-bottom">
-              <div className="cwp-card-progress-bar">
-                <div className="cwp-card-progress-fill" style={{ width: `${networkLevel}%` }} />
-              </div>
-              <div className="cwp-card-subtext">
-                <span>上传: {formatBytesPerSecond(snapshot?.networkUploadBytesPerSecond ?? null)}</span>
-                <span>下载: {formatBytesPerSecond(snapshot?.networkDownloadBytesPerSecond ?? null)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* TEMP */}
-          <div className="cwp-metric-card-new">
-            <div className="cwp-card-top">
-              <div className="cwp-card-title-grp">
-                <span className="cwp-card-title-zh">TEMP 冷却风扇墙</span>
-                <span className="cwp-card-title-en">Temp Cooling Wall</span>
-              </div>
-              <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="temp" size={16} /></div>
-            </div>
-            <div className="cwp-card-mid">
-              <span className="cwp-card-val">{formatTemperature(snapshot?.cpuTemperatureCelsius ?? null)}</span>
-              <span className={`cwp-card-badge ${tempClass}`}>{tempBadge}</span>
-            </div>
-            <div className="cwp-card-bottom">
-              <div className="cwp-card-progress-bar">
-                <div className="cwp-card-progress-fill" style={{ width: `${clampPercent(tempLevel)}%`, background: "var(--color-brand-orange)" }} />
-              </div>
-              <div className="cwp-card-subtext">
-                <span>CPU: {formatTemperature(snapshot?.cpuTemperatureCelsius ?? null)}</span>
-                <span>GPU: {formatTemperature(snapshot?.gpuTemperatureCelsius ?? null)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* DISK */}
-          <div className="cwp-metric-card-new">
-            <div className="cwp-card-top">
-              <div className="cwp-card-title-grp">
-                <span className="cwp-card-title-zh">DISK 数据归档柜</span>
-                <span className="cwp-card-title-en">Disk Archive Cabinet</span>
-              </div>
-              <div className="cwp-card-icon-container" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="disk" size={16} /></div>
-            </div>
-            <div className="cwp-card-mid">
-              <span className="cwp-card-val">62%</span>
-              <span className="cwp-card-badge cwp-badge-normal">宽敞</span>
-            </div>
-            <div className="cwp-card-bottom">
-              <div className="cwp-card-progress-bar">
-                <div className="cwp-card-progress-fill" style={{ width: `${diskLevel}%` }} />
-              </div>
-              <div className="cwp-card-subtext">
-                <span>读取: {formatBytesPerSecond(snapshot?.diskReadBytesPerSecond ?? null)}</span>
-                <span>写入: {formatBytesPerSecond(snapshot?.diskWriteBytesPerSecond ?? null)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Output Strip */}
-      <div className="cwp-output-strip">
+          {/* Bottom Output Strip */}
+        <div className="cwp-output-strip">
         <div className="cwp-output-card">
           <div className="cwp-output-icon" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}><PixelIcon name="wrench" size={18} /></div>
           <div className="cwp-output-info">
@@ -340,6 +353,7 @@ export function DashboardPage() {
             <span className="cwp-output-val">{formatDuration(workshop?.totalOnlineSeconds ?? 0)}</span>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -34,14 +34,8 @@ pub fn start_hardware_snapshot_pump(app: AppHandle) {
         loop {
             let (snapshot, interval_ms) = {
                 let state = app.state::<AppState>();
-                let interval_ms = {
-                    let settings = state.settings.read().await;
-                    if settings.enable_low_power_mode {
-                        5000
-                    } else {
-                        settings.sampling_interval_ms
-                    }
-                };
+                let settings = state.settings.read().await.clone();
+                let interval_ms = resolve_sampling_interval_ms(&app, &settings);
 
                 let snapshot = match state.hardware_adapter.lock() {
                     Ok(mut adapter) => adapter.sample(),
@@ -67,9 +61,31 @@ pub fn start_hardware_snapshot_pump(app: AppHandle) {
             update_work_log_for_snapshot(&app, &snapshot).await;
             PetStateService::update_for_snapshot(&app, &snapshot).await;
 
-            tokio::time::sleep(Duration::from_millis(interval_ms.max(250))).await;
+            tokio::time::sleep(Duration::from_millis(interval_ms.max(1000))).await;
         }
     });
+}
+
+fn resolve_sampling_interval_ms(app: &AppHandle, settings: &crate::models::AppSettings) -> u64 {
+    if settings.enable_low_power_mode {
+        return 5000;
+    }
+
+    if has_visible_monitor_surface(app) {
+        settings.sampling_interval_ms.max(1000)
+    } else {
+        settings.background_sampling_interval_ms.max(3000)
+    }
+}
+
+fn has_visible_monitor_surface(app: &AppHandle) -> bool {
+    ["main", "monitor-bar", "pet-panel", "taskbar-monitor"]
+        .into_iter()
+        .any(|label| {
+            app.get_webview_window(label)
+                .and_then(|window| window.is_visible().ok())
+                .unwrap_or(false)
+        })
 }
 
 async fn update_work_log_for_snapshot(app: &AppHandle, snapshot: &HardwareSnapshot) {

@@ -12,6 +12,7 @@ import {
   getSpriteSheetForState,
   getSpriteSheetOneShotDurationMs,
   isSpriteSheetOneShot,
+  preloadSpriteSheetForState,
 } from "./animation/spriteSheetAssets";
 import { getCoreCatOneShotDurationMs } from "./animation/animationStateMachine";
 import {
@@ -118,8 +119,8 @@ export function CoreCat({
 
   const vfxSnapshot = createCoreCatVfxSnapshot({
     animationState,
-    degradeVfx,
-    isPaused: debugPauseVfx,
+    degradeVfx: degradeVfx || lowPowerMode || staticMode,
+    isPaused: debugPauseVfx || staticMode,
     lowPowerMode,
     reducedMotion,
     sleepBreath,
@@ -200,6 +201,10 @@ export function CoreCat({
   const useClickDizzy =
     animationState === "click" &&
     clickTimestampsRef.current.length >= rapidClickThreshold;
+
+  useEffect(() => {
+    preloadSpriteSheetForState(animationState, useClickDizzy);
+  }, [animationState, useClickDizzy]);
 
   const spriteAsset = useMemo(
     () => getSpriteSheetForState(animationState, useClickDizzy),

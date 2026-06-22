@@ -49,34 +49,6 @@
         "skipTaskbar": true,
         "visible": true,
         "shadow": false
-      },
-      {
-        "label": "taskbar-monitor",
-        "title": "CoreWorkPal Taskbar Monitor",
-        "url": "/taskbar-monitor",
-        "width": 520,
-        "height": 36,
-        "decorations": false,
-        "transparent": true,
-        "resizable": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "visible": false,
-        "shadow": false
-      },
-      {
-        "label": "pet-panel",
-        "title": "CoreWorkPal Pet Panel",
-        "url": "/pet-panel",
-        "width": 300,
-        "height": 360,
-        "decorations": false,
-        "transparent": true,
-        "resizable": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "visible": false,
-        "shadow": false
       }
     ],
     "security": {

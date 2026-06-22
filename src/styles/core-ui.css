@@ -1654,6 +1654,16 @@ label {
   display: grid;
   grid-template-columns: 130px 1fr;
   gap: 8px;
+  min-height: 0;
+}
+
+.cwp-dashboard-content {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 6px;
+  overflow: hidden;
 }
 
 .cwp-dashboard-wide {
@@ -2196,12 +2206,168 @@ label {
   text-overflow: ellipsis;
 }
 
+.cwp-device-panel {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  border: 2px solid var(--color-border-soft);
+  background: var(--color-bg-850);
+  border-radius: 0px;
+  padding: 6px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cwp-device-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(63, 199, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(63, 199, 255, 0.04) 1px, transparent 1px);
+  background-size: 12px 12px;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.cwp-device-panel-head,
+.cwp-device-list {
+  position: relative;
+  z-index: 1;
+}
+
+.cwp-device-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.cwp-device-title-wrap {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cwp-device-head-icon,
+.cwp-device-label-icon {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--color-border-soft);
+  background: var(--color-brand-orange-soft);
+  color: var(--color-brand-orange-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.cwp-device-title-wrap h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-family: var(--font-pixel-title);
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.cwp-device-title-wrap p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1.1;
+}
+
+.cwp-device-refresh-tag {
+  flex: 0 0 auto;
+  color: var(--color-tech-cyan);
+  border: 1px solid rgba(63, 199, 255, 0.35);
+  background: var(--color-tech-cyan-soft);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1;
+  padding: 3px 5px;
+}
+
+.cwp-device-list {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(214, 233, 244, 0.35) transparent;
+}
+
+.cwp-device-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 6px;
+  padding: 4px 5px;
+  border: 1px solid rgba(40, 58, 84, 0.72);
+  background: rgba(8, 13, 20, 0.45);
+}
+
+.cwp-device-label {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.cwp-device-label-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-tech-cyan);
+  background: var(--color-bg-800);
+}
+
+.cwp-device-values {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.cwp-device-values span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cwp-device-values .is-muted {
+  color: var(--color-text-muted);
+}
+
+.cwp-device-page .cwp-device-row {
+  grid-template-columns: 92px minmax(0, 1fr);
+}
+
+.cwp-device-page .cwp-device-label,
+.cwp-device-page .cwp-device-values {
+  font-size: 12px;
+}
+
 .cwp-module-card {
   background: var(--color-bg-850);
   border: 2px solid var(--color-border-soft);
   border-radius: 0px;
   padding: 5px 8px;
-  height: 80px;
+  height: 104px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -2287,7 +2453,7 @@ label {
 .cwp-module-footer {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   z-index: 2;
 }
 .cwp-module-bar {
@@ -2301,6 +2467,24 @@ label {
   background: var(--color-brand-orange);
   width: 0%;
   transition: width 0.4s ease;
+}
+.cwp-module-resource-rate {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  --module-resource-color: var(--color-brand-orange);
+  font-size: 9px;
+  line-height: 1;
+  color: var(--color-text-muted);
+}
+.cwp-module-resource-rate.is-insight {
+  --module-resource-color: var(--color-insight-gold);
+}
+.cwp-module-resource-rate strong {
+  color: var(--module-resource-color);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
 }
 .cwp-module-stat-row {
   display: flex;

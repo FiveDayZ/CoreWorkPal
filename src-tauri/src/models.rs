@@ -22,6 +22,9 @@ pub struct HardwareSnapshot {
     pub gpu_memory_total_bytes: Option<u64>,
     pub total_memory_bytes: Option<u64>,
     pub used_memory_bytes: Option<u64>,
+    pub cpu_physical_core_count: Option<u32>,
+    pub cpu_logical_core_count: Option<u32>,
+    pub device_inventory: HardwareDeviceInventory,
 }
 
 impl Default for HardwareSnapshot {
@@ -43,8 +46,41 @@ impl Default for HardwareSnapshot {
             gpu_memory_total_bytes: None,
             total_memory_bytes: None,
             used_memory_bytes: None,
+            cpu_physical_core_count: None,
+            cpu_logical_core_count: None,
+            device_inventory: HardwareDeviceInventory::default(),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct HardwareDeviceInventory {
+    pub motherboard: Vec<HardwareDeviceInfo>,
+    pub memory_modules: Vec<MemoryModuleInfo>,
+    pub gpus: Vec<HardwareDeviceInfo>,
+    pub displays: Vec<HardwareDeviceInfo>,
+    pub disks: Vec<HardwareDeviceInfo>,
+    pub audio_devices: Vec<HardwareDeviceInfo>,
+    pub network_adapters: Vec<HardwareDeviceInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct HardwareDeviceInfo {
+    pub name: String,
+    pub detail: Option<String>,
+    pub vendor: Option<String>,
+    pub capacity_bytes: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct MemoryModuleInfo {
+    pub manufacturer: Option<String>,
+    pub part_number: Option<String>,
+    pub capacity_bytes: Option<u64>,
+    pub speed_mhz: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -135,8 +171,8 @@ impl Default for AppSettings {
             enable_static_cat_mode: false,
             enable_pet_bubble: true,
             show_monitor_data_in_taskbar: true,
-            sampling_interval_ms: 1000,
-            background_sampling_interval_ms: 3000,
+            sampling_interval_ms: 2000,
+            background_sampling_interval_ms: 5000,
             data_sorting_cpu_threshold: 40.0,
             cat_size: 1.0,
             cat_opacity: 0.95,
@@ -237,10 +273,10 @@ impl AppSettings {
             self.show_monitor_data_in_taskbar = value;
         }
         if let Some(value) = patch.sampling_interval_ms {
-            self.sampling_interval_ms = value.max(250);
+            self.sampling_interval_ms = value.max(1000);
         }
         if let Some(value) = patch.background_sampling_interval_ms {
-            self.background_sampling_interval_ms = value.max(1000);
+            self.background_sampling_interval_ms = value.max(3000);
         }
         if let Some(value) = patch.data_sorting_cpu_threshold {
             self.data_sorting_cpu_threshold = value.clamp(10.0, 95.0);

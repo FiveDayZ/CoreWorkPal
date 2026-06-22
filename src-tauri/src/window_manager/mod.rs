@@ -1,4 +1,7 @@
-use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WindowEvent};
+use tauri::{
+    AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder, WindowEvent,
+};
 
 use crate::{
     app_state::AppState,
@@ -17,9 +20,7 @@ pub fn handle_window_event(window: &tauri::Window, event: &WindowEvent) {
 }
 
 pub fn show_window(app: &AppHandle, label: &str, focus: bool) -> Result<(), String> {
-    let window = app
-        .get_webview_window(label)
-        .ok_or_else(|| format!("window '{label}' not found"))?;
+    let window = ensure_webview_window(app, label)?;
 
     window
         .show()
@@ -35,9 +36,13 @@ pub fn show_window(app: &AppHandle, label: &str, focus: bool) -> Result<(), Stri
 }
 
 pub fn hide_window(app: &AppHandle, label: &str) -> Result<(), String> {
-    let window = app
-        .get_webview_window(label)
-        .ok_or_else(|| format!("window '{label}' not found"))?;
+    let Some(window) = app.get_webview_window(label) else {
+        return if is_lazy_window(label) {
+            Ok(())
+        } else {
+            Err(format!("window '{label}' not found"))
+        };
+    };
 
     window
         .hide()
@@ -45,9 +50,7 @@ pub fn hide_window(app: &AppHandle, label: &str) -> Result<(), String> {
 }
 
 pub fn toggle_window(app: &AppHandle, label: &str) -> Result<bool, String> {
-    let window = app
-        .get_webview_window(label)
-        .ok_or_else(|| format!("window '{label}' not found"))?;
+    let window = ensure_webview_window(app, label)?;
 
     let visible = window
         .is_visible()
@@ -63,6 +66,62 @@ pub fn toggle_window(app: &AppHandle, label: &str) -> Result<bool, String> {
             .show()
             .map_err(|error| format!("failed to show {label}: {error}"))?;
         Ok(true)
+    }
+}
+
+pub fn ensure_webview_window(app: &AppHandle, label: &str) -> Result<WebviewWindow, String> {
+    if let Some(window) = app.get_webview_window(label) {
+        return Ok(window);
+    }
+
+    let spec = LazyWindowSpec::for_label(label)
+        .ok_or_else(|| format!("window '{label}' not found"))?;
+
+    WebviewWindowBuilder::new(app, spec.label, WebviewUrl::App(spec.url.into()))
+        .title(spec.title)
+        .inner_size(spec.width, spec.height)
+        .decorations(false)
+        .transparent(true)
+        .resizable(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .visible(false)
+        .shadow(false)
+        .build()
+        .map_err(|error| format!("failed to create {label}: {error}"))
+}
+
+fn is_lazy_window(label: &str) -> bool {
+    LazyWindowSpec::for_label(label).is_some()
+}
+
+struct LazyWindowSpec {
+    label: &'static str,
+    title: &'static str,
+    url: &'static str,
+    width: f64,
+    height: f64,
+}
+
+impl LazyWindowSpec {
+    fn for_label(label: &str) -> Option<Self> {
+        match label {
+            "pet-panel" => Some(Self {
+                label: "pet-panel",
+                title: "CoreWorkPal Pet Panel",
+                url: "/pet-panel",
+                width: 300.0,
+                height: 360.0,
+            }),
+            "taskbar-monitor" => Some(Self {
+                label: "taskbar-monitor",
+                title: "CoreWorkPal Taskbar Monitor",
+                url: "/taskbar-monitor",
+                width: 520.0,
+                height: 36.0,
+            }),
+            _ => None,
+        }
     }
 }
 

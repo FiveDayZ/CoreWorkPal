@@ -47,14 +47,6 @@ const metaByStem = Object.fromEntries(
   ]),
 ) as Record<string, SpriteSheetMeta>;
 
-if (typeof window !== "undefined") {
-  Object.values(imageUrlByStem).forEach((url) => {
-    const image = new Image();
-    image.decoding = "async";
-    image.src = url;
-  });
-}
-
 // ---------------------------------------------------------------------------
 // State → spritesheet file-stem mapping
 // ---------------------------------------------------------------------------
@@ -76,6 +68,7 @@ const STATE_TO_STEM: Record<CoreCatAnimationState, string> = {
   memoryCrowded: "Memory_Crowded",
   repairing: "Repairing",
   dataSorting: "dataSorting",
+  pettingHearts: "Petting_Hearts",
   sleep: "Sleep_Low_Power",
   celebrate: "Celebrate",
   workshopUpgrade: "Workshop_Upgrade",
@@ -98,6 +91,8 @@ export interface SpriteSheetAsset {
   meta: SpriteSheetMeta;
 }
 
+const preloadedSheetUrls = new Set<string>();
+
 /** Whether a looping or one-shot playback mode should be used. */
 const ONE_SHOT_STATES = new Set<CoreCatAnimationState>([
   "bootWake",
@@ -105,6 +100,7 @@ const ONE_SHOT_STATES = new Set<CoreCatAnimationState>([
   "dropLanding",
   "panelOpen",
   "panelClose",
+  "pettingHearts",
   "celebrate",
   "workshopUpgrade",
   "moduleUpgrade",
@@ -156,6 +152,26 @@ export function getSpriteSheetForState(
   }
 
   return { sheetUrl, meta };
+}
+
+export function preloadSpriteSheetForState(
+  state: CoreCatAnimationState,
+  useClickDizzy = false,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const asset = getSpriteSheetForState(state, useClickDizzy);
+  if (!asset || preloadedSheetUrls.has(asset.sheetUrl)) {
+    return;
+  }
+
+  preloadedSheetUrls.add(asset.sheetUrl);
+  const image = new Image();
+  image.decoding = "async";
+  image.loading = "eager";
+  image.src = asset.sheetUrl;
 }
 
 /**

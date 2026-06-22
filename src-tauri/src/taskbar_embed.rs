@@ -1,7 +1,7 @@
 use tauri::{AppHandle, Manager};
 
-use crate::app_state::AppState;
 use crate::models::{AppSettings, MonitorBarMode};
+use crate::{app_state::AppState, window_manager};
 
 const TASKBAR_WINDOW_LABEL: &str = "taskbar-monitor";
 const TASKBAR_COLUMN_WIDTH: i32 = 112;
@@ -20,16 +20,22 @@ pub async fn sync_taskbar_monitor(app: &AppHandle) {
         .map(|settings| settings.show_monitor_data_in_taskbar)
         .unwrap_or(false);
 
-    let Some(window) = app.get_webview_window(TASKBAR_WINDOW_LABEL) else {
-        return;
-    };
-
     if !enabled {
-        if let Err(error) = window.hide() {
-            tracing::warn!("failed to hide taskbar monitor: {error}");
+        if let Some(window) = app.get_webview_window(TASKBAR_WINDOW_LABEL) {
+            if let Err(error) = window.hide() {
+                tracing::warn!("failed to hide taskbar monitor: {error}");
+            }
         }
         return;
     }
+
+    let window = match window_manager::ensure_webview_window(app, TASKBAR_WINDOW_LABEL) {
+        Ok(window) => window,
+        Err(error) => {
+            tracing::warn!("{error}");
+            return;
+        }
+    };
 
     let desired_width = settings
         .as_ref()

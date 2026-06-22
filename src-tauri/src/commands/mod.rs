@@ -110,6 +110,30 @@ pub async fn get_workshop_state(state: State<'_, AppState>) -> Result<WorkshopSt
 }
 
 #[tauri::command]
+pub async fn reward_corecat_interaction(
+    action: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<WorkshopState, String> {
+    let (animation_state, next_workshop) = {
+        let mut workshop = state.workshop.write().await;
+        apply_corecat_interaction_reward(&mut workshop, action.as_str())?;
+        state.storage.save_workshop(&workshop)?;
+        let animation_state = match action.as_str() {
+            "pet" => "pettingHearts",
+            "sortParts" => "dataSorting",
+            _ => unreachable!("validated in apply_corecat_interaction_reward"),
+        };
+        (animation_state, workshop.clone())
+    };
+
+    app.emit("workshop:updated", next_workshop.clone())
+        .map_err(|error| format!("failed to emit workshop:updated: {error}"))?;
+    emit_corecat_interaction_state(&app, animation_state)?;
+    Ok(next_workshop)
+}
+
+#[tauri::command]
 pub async fn get_work_log_report(
     date: Option<String>,
     state: State<'_, AppState>,
@@ -272,6 +296,32 @@ pub async fn toggle_pet_panel(app: AppHandle) -> Result<(), String> {
 fn emit_corecat_interaction_state(app: &AppHandle, state: &'static str) -> Result<(), String> {
     app.emit("corecat:interaction-state", state)
         .map_err(|error| format!("failed to emit corecat:interaction-state: {error}"))
+}
+
+fn apply_corecat_interaction_reward(
+    workshop: &mut WorkshopState,
+    action: &str,
+) -> Result<(), String> {
+    let today = today_key();
+    if workshop.last_daily_reset_date != today {
+        workshop.today_parts = 0.0;
+        workshop.today_insight = 0.0;
+        workshop.last_daily_reset_date = today;
+    }
+
+    match action {
+        "pet" => {
+            workshop.insight += 0.01;
+            workshop.today_insight += 0.01;
+            Ok(())
+        }
+        "sortParts" => {
+            workshop.parts += 0.1;
+            workshop.today_parts += 0.1;
+            Ok(())
+        }
+        _ => Err(format!("unknown CoreCat interaction action: {action}")),
+    }
 }
 
 #[tauri::command]

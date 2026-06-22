@@ -293,6 +293,10 @@ assert.equal(
   "panelClose",
 );
 assert.equal(
+  resolveCoreCatAnimationState(input({ interactionStateOverride: "pettingHearts" })),
+  "pettingHearts",
+);
+assert.equal(
   resolveCoreCatAnimationState(
     input({
       catState: "TemperatureCheck",
@@ -338,6 +342,15 @@ assert.equal(
 assert.equal(
   resolveCoreCatAnimationState(input({ interactionStateOverride: "moduleUpgrade" })),
   "moduleUpgrade",
+);
+assert.equal(
+  resolveCoreCatAnimationState(
+    input({
+      completedOneShotState: "pettingHearts",
+      interactionStateOverride: "pettingHearts",
+    }),
+  ),
+  "idle",
 );
 assert.equal(
   resolveCoreCatAnimationState(
@@ -932,6 +945,7 @@ assert.deepEqual(getCoreCatQaSequence("interaction").states, [
   "click",
   "panelOpen",
   "panelClose",
+  "pettingHearts",
   "dragging",
   "dropLanding",
   "lowPowerStatic",
@@ -1026,6 +1040,7 @@ function validateAnimationSpriteSheets() {
     "Module_Upgrade",
     "PanelClose",
     "PanelOpen",
+    "Petting_Hearts",
     "Repairing",
     "Sleep_Low_Power",
     "Temperature_Check",

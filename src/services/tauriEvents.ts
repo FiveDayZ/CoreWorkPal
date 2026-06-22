@@ -25,6 +25,16 @@ let lastDerivedChangedAt = 0;
 let pendingCleanupSucceeded = false;
 let temperatureSafeSince: number | null = null;
 
+export interface TauriEventRegistrationOptions {
+  derivePetState?: boolean;
+  listenHardware?: boolean;
+  listenNavigation?: boolean;
+  listenPetState?: boolean;
+  listenSettings?: boolean;
+  listenWorkLog?: boolean;
+  listenWorkshop?: boolean;
+}
+
 function isTauriRuntime() {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
@@ -33,63 +43,89 @@ function isMainRoute(route: string): route is MainRoute {
   return mainRoutes.some((item) => item.key === route);
 }
 
-export function registerTauriEvents(): () => Promise<void> {
+export function registerTauriEvents(
+  options: TauriEventRegistrationOptions = {},
+): () => Promise<void> {
   const unlisteners: Array<Promise<UnlistenFn>> = [];
 
   if (!isTauriRuntime()) {
     return async () => undefined;
   }
 
-  unlisteners.push(
-    listen<HardwareSnapshot>("hardware:snapshot", (event) => {
-      useHardwareStore.getState().setSnapshot(event.payload);
-      applyHardwareDerivedPetFallback(event.payload);
-    }),
-  );
+  const {
+    derivePetState = false,
+    listenHardware = true,
+    listenNavigation = true,
+    listenPetState = true,
+    listenSettings = true,
+    listenWorkLog = true,
+    listenWorkshop = true,
+  } = options;
 
-  unlisteners.push(
-    listen<WorkshopState>("workshop:updated", (event) => {
-      useWorkshopStore.getState().setWorkshopState(event.payload);
-    }),
-  );
+  if (listenHardware) {
+    unlisteners.push(
+      listen<HardwareSnapshot>("hardware:snapshot", (event) => {
+        useHardwareStore.getState().setSnapshot(event.payload);
+        if (derivePetState) {
+          applyHardwareDerivedPetFallback(event.payload);
+        }
+      }),
+    );
+  }
 
-  unlisteners.push(
-    listen<WorkLogReport>("worklog:updated", (event) => {
-      const workLogStore = useWorkLogStore.getState();
-      if (workLogStore.selectedDate === event.payload.date) {
-        workLogStore.setReport(event.payload);
-      }
-    }),
-  );
+  if (listenWorkshop) {
+    unlisteners.push(
+      listen<WorkshopState>("workshop:updated", (event) => {
+        useWorkshopStore.getState().setWorkshopState(event.payload);
+      }),
+    );
+  }
 
-  unlisteners.push(
-    listen<CatStateChangedEvent>("pet:state-changed", (event) => {
-      lastDerivedCatState = event.payload.catState;
-      lastDerivedChangedAt = event.payload.timestamp;
-      usePetStore.getState().setPetStatus(event.payload);
-      maybeNotifyPetState(event.payload);
-    }),
-  );
+  if (listenWorkLog) {
+    unlisteners.push(
+      listen<WorkLogReport>("worklog:updated", (event) => {
+        const workLogStore = useWorkLogStore.getState();
+        if (workLogStore.selectedDate === event.payload.date) {
+          workLogStore.setReport(event.payload);
+        }
+      }),
+    );
+  }
 
-  unlisteners.push(
-    listen("cleanup:succeeded", () => {
-      applyCleanupSucceeded(Date.now());
-    }),
-  );
+  if (listenPetState) {
+    unlisteners.push(
+      listen<CatStateChangedEvent>("pet:state-changed", (event) => {
+        lastDerivedCatState = event.payload.catState;
+        lastDerivedChangedAt = event.payload.timestamp;
+        usePetStore.getState().setPetStatus(event.payload);
+        maybeNotifyPetState(event.payload);
+      }),
+    );
 
-  unlisteners.push(
-    listen<AppSettings>("settings:updated", (event) => {
-      useSettingsStore.getState().setSettings(event.payload);
-    }),
-  );
+    unlisteners.push(
+      listen("cleanup:succeeded", () => {
+        applyCleanupSucceeded(Date.now());
+      }),
+    );
+  }
 
-  unlisteners.push(
-    listen<string>("ui:navigate-main", (event) => {
-      if (isMainRoute(event.payload)) {
-        useUiStore.getState().setMainRoute(event.payload);
-      }
-    }),
-  );
+  if (listenSettings) {
+    unlisteners.push(
+      listen<AppSettings>("settings:updated", (event) => {
+        useSettingsStore.getState().setSettings(event.payload);
+      }),
+    );
+  }
+
+  if (listenNavigation) {
+    unlisteners.push(
+      listen<string>("ui:navigate-main", (event) => {
+        if (isMainRoute(event.payload)) {
+          useUiStore.getState().setMainRoute(event.payload);
+        }
+      }),
+    );
+  }
 
   return async () => {
     const resolved = await Promise.all(unlisteners);
