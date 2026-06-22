@@ -16,7 +16,7 @@ export function AboutPage() {
           <p className="cwp-about-hero-subtitle">
             让工程更有序，让创意更自由。这是一个精心打磨的桌面监控伙伴，集成迷你桌面宠物、硬件状态监控、工作投入度与专注度评估、以及工坊养成系统，实时分析您的工作状态与产出效能，是您贴心的开发运维猫咪陪伴伴侣。
           </p>
-          <span className="cwp-about-version-tag">Version 1.0.0 (Release-Build)</span>
+          <span className="cwp-about-version-tag">Version {typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.1.0"} (Release-Build)</span>
         </div>
         <img
           src={iconAssets.corecatAvatar}

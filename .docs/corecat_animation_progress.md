@@ -89,8 +89,8 @@
   - 在项目根目录下初始化 Git 仓库，自动暂存并提交所有项目源码。
   - 添加了远程 GitHub 地址：`https://github.com/FiveDayZ/CoreWorkPal.git`。
   - 配置了局域网 Git Proxy 路由，成功将项目整体全量推送上传至 GitHub 主干仓库 `main` 分支，且已通过 `git rm --cached` 将 `CoreWorkPalUI` 和 `docs` 目录从 Git 历史和远程仓库中完全移除。
+- [x] 版本号一致性同步：将关于页面的版本号更新为动态展示全局变量 `__APP_VERSION__`，使其与主窗口标题栏及主程序 `package.json` 版本号 `0.1.0` 保持完全一致。
+
 
 ## 可执行文件位置
 `src-tauri/target/release/core-work-pal.exe`
-
-
