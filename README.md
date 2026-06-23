@@ -48,7 +48,7 @@
 | ![工坊面板](src/assets/screenshots/workshop_page.png) | ![模块升级弹窗](src/assets/screenshots/module_detail.png) |
 
 ### ⚙️ 精细化配置控制台与日志审计
-| 工坊配置控制台 | 日志审计面板 |
+| 工坊配置控制台 | 每日工况面板 |
 | :---: | :---: |
 | ![设置页面](src/assets/screenshots/settings_page.png) | ![日志面板](src/assets/screenshots/logs_page.png) |
 
