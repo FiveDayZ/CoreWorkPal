@@ -298,6 +298,46 @@ export async function updateWorkshopState(
   return invoke<WorkshopState>("update_workshop_state", { workshop });
 }
 
+import type { UpdateCheckResult } from "../types/update";
+
+export async function checkUpdate(pat?: string): Promise<UpdateCheckResult> {
+  if (!isTauriRuntime()) {
+    return {
+      hasUpdate: true,
+      currentVersion: "0.1.0",
+      latestVersion: "1.1.0",
+      changelog: "### 更新日志\n- [优化] 提升了桌面猫咪动画运行效率\n- [修复] 解决任务栏嵌入在某些分辨率下的偏移问题",
+      downloadUrl: "https://mock.com/core-work-pal_1.1.0_x64-setup.exe",
+      assetId: 12345,
+      assetSize: 15420100,
+      assetName: "core-work-pal_1.1.0_x64-setup.exe",
+    };
+  }
+
+  return invoke<UpdateCheckResult>("check_update", { pat });
+}
+
+export async function downloadUpdate(
+  assetId: number,
+  assetName: string,
+  pat?: string,
+): Promise<string> {
+  if (!isTauriRuntime()) {
+    return "C:\\MockPath\\core-work-pal_1.1.0_x64-setup.exe";
+  }
+
+  return invoke<string>("download_update", { assetId, assetName, pat });
+}
+
+export async function installUpdate(packagePath: string): Promise<void> {
+  if (!isTauriRuntime()) {
+    alert(`Mock安装：已经启动安装程序 ${packagePath}`);
+    return;
+  }
+
+  return invoke<void>("install_update", { packagePath });
+}
+
 function resetBrowserWorkshopDailyCounters() {
   const today = todayKey();
   if (browserWorkshop.lastDailyResetDate === today) {

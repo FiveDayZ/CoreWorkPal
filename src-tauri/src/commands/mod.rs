@@ -1,5 +1,7 @@
 use tauri::{AppHandle, Emitter, State};
 
+pub mod updater;
+
 use crate::{
     app_state::AppState,
     models::{today_key, AppSettings, AppSettingsPatch, HardwareSnapshot, WorkLogEntry, WorkLogReport, WorkshopState},

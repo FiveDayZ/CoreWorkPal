@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { iconAssets } from "../../ui/assets";
 import { PixelIcon } from "../../ui/PixelIcon";
+import { UpdateModal } from "../../components/UpdateModal";
 
 export function AboutPage() {
+  const [isUpdateOpen, setIsUpdateOpen] = useState(false);
   return (
     <div className="cwp-page">
       <div className="page-title-row">
@@ -16,7 +19,27 @@ export function AboutPage() {
           <p className="cwp-about-hero-subtitle">
             让工程更有序，让创意更自由。这是一个精心打磨的桌面监控伙伴，集成迷你桌面宠物、硬件状态监控、工作投入度与专注度评估、以及工坊养成系统，实时分析您的工作状态与产出效能，是您贴心的开发运维猫咪陪伴伴侣。
           </p>
-          <span className="cwp-about-version-tag">Version {typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.1.0"} (Release-Build)</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "6px" }}>
+            <span className="cwp-about-version-tag">Version {typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.1.0"} (Release-Build)</span>
+            <button
+              onClick={() => setIsUpdateOpen(true)}
+              className="cwp-custom-btn"
+              style={{
+                background: "var(--color-brand-orange)",
+                border: "1px solid var(--color-border-strong)",
+                color: "var(--color-bg-950)",
+                fontSize: "10px",
+                padding: "2px 8px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontFamily: "var(--font-pixel-title)",
+                lineHeight: 1
+              }}
+              type="button"
+            >
+              检查更新
+            </button>
+          </div>
         </div>
         <img
           src={iconAssets.corecatAvatar}
@@ -76,6 +99,7 @@ export function AboutPage() {
           </button>
         </div>
       </div>
+      <UpdateModal isOpen={isUpdateOpen} onClose={() => setIsUpdateOpen(false)} />
     </div>
   );
 }

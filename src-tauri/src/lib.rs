@@ -61,7 +61,10 @@ pub fn run() {
             commands::toggle_pet_panel,
             commands::save_window_position,
             commands::exit_app,
-            commands::update_workshop_state
+            commands::update_workshop_state,
+            commands::updater::check_update,
+            commands::updater::download_update,
+            commands::updater::install_update
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
