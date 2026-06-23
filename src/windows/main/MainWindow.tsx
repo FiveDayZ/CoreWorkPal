@@ -50,7 +50,7 @@ export function MainWindow() {
                 type="button"
                 title="最小化"
               >
-                ─
+                <PixelIcon name="minimize" size={10} />
               </button>
               <button
                 aria-label="Toggle Panel"
@@ -58,7 +58,6 @@ export function MainWindow() {
                 onClick={() => void showPetPanel()}
                 type="button"
                 title="显示快捷面板"
-                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}
               >
                 <PixelIcon name="restore" size={10} />
               </button>
@@ -69,7 +68,7 @@ export function MainWindow() {
                 type="button"
                 title="关闭窗口"
               >
-                ×
+                <PixelIcon name="close" size={10} />
               </button>
             </>
           }
