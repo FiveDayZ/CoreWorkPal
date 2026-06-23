@@ -132,11 +132,12 @@
 ## 已完成任务 (用户唯一识别码 CatID 部分)
 
 - [x] 拓展 AppSettings 结构体：在前端与 Rust 后端 AppSettings 结构体及类型定义中引入 `catId` (或 `cat_id`) 字段。
-- [x] 随机唯一算法实现：在 Rust 后端基于 SystemTime 纳秒种子和高效率的 `Xorshift64` 伪随机数发生器设计了 `generate_random_cat_id()` 算法，生成 10 位高散列度且唯一的字母 + 数字字符串。
-- [x] 首次启动与配置迁移：在配置加载与迁移服务 (`migrate_settings`) 中注入自动生成逻辑。若检测到 `catId` 缺失或为空，则自动生成并永久落盘持久化存储到 `settings.json` 中，后续启动保持一致。
+- [x] SMBIOS 硬件 UUID 获取：在 Rust 后端实现 `query_smbios_uuid()` 方法，通过执行 PowerShell 指令 `(Get-CimInstance Win32_ComputerSystemProduct).UUID` 读取本机的 SMBIOS 系统硬件唯一 UUID，对空白值、全零或无效占位符进行自动过滤，确保硬件标识的可靠性。
+- [x] 确定性哈希转换算法实现：设计了 FNV-1a 64位哈希算法（`fnv1a_64`）和 `Xorshift64` 伪随机流的混合架构（`convert_uuid_to_cat_id`）。输入系统硬件 UUID 时，可确定性地生成唯一的 10 位大小写字母 + 数字组成的 CatID。硬件不变，UID 便不会改变，彻底解决配置丢失后 ID 重置的隐患。
+- [x] 备份与随机降级兼容：如果设备读取硬件 UUID 失败（非 Windows 平台或虚拟机环境），系统将无缝自动保留本地已存在的 random ID，或生成新的高散列随机 ID 兜底。
 - [x] 侧边栏头像区域 UI 拓展：重构主窗口 `MainWindow.tsx` 侧边栏底部的状态卡片布局，将卡片更改为垂直 Flex 分区，且在其下方使用 Silkscreen 像素字体完美呈现只读、可选择复制的 `ID: XXXXXXXXXX`，美观精致。
 - [x] 设置主页左侧头像区拓展：重构 `SettingsPage.tsx` 左侧大型头像详情卡片，在头像 wrapper 正下方居中增加带有暗底、细边框及醒目布丁橙强化的像素风 `ID: XXXXXXXXXX` 看板，符合复古工坊界面审美。
-- [x] 类型安全与测试覆盖：修正了前端浏览器 Mock 环境下的默认配置类型缺失错误，新增 Rust 存储加载与迁移单元测试的断言以 100% 覆盖 CatID 的唯一性、长度、格式以及持久化落盘正确性，所有 tests、tsc 与 Vite 静态打包全绿通过。
+- [x] 类型安全与测试覆盖：新增了 `test_uuid_cat_id_conversion` 单元测试，专门验证算法的确定性（相同输入相同输出）、格式规范（10位字母数字）及输入容错性（过滤首尾空格），测试、tsc 与 Vite 静态打包全绿。
 
 ## 可执行文件位置
 `src-tauri/target/release/core-work-pal.exe`

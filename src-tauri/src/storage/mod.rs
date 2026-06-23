@@ -123,6 +123,62 @@ impl StorageService {
     }
 }
 
+fn query_smbios_uuid() -> Option<String> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        let mut command = std::process::Command::new("powershell.exe");
+        command.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-Command",
+            "(Get-CimInstance Win32_ComputerSystemProduct).UUID",
+        ]);
+        command.creation_flags(CREATE_NO_WINDOW);
+
+        if let Ok(output) = command.output() {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let uuid = stdout.trim().to_string();
+                if !uuid.is_empty()
+                    && uuid != "00000000-0000-0000-0000-000000000000"
+                    && uuid != "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"
+                {
+                    return Some(uuid);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn fnv1a_64(data: &[u8]) -> u64 {
+    let mut hash = 0xcbf29ce484222325u64;
+    for &byte in data {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(0x00000100000001B3u64);
+    }
+    hash
+}
+
+fn convert_uuid_to_cat_id(uuid: &str) -> String {
+    let seed = fnv1a_64(uuid.trim().as_bytes());
+    let mut state = if seed == 0 { 1234567890 } else { seed };
+    let chars: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let mut result = String::with_capacity(10);
+
+    for _ in 0..10 {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        let idx = (state % chars.len() as u64) as usize;
+        result.push(chars[idx] as char);
+    }
+    result
+}
+
 fn generate_random_cat_id() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let seed = SystemTime::now()
@@ -155,8 +211,18 @@ fn migrate_settings(settings: &mut AppSettings) -> bool {
         changed = true;
     }
 
-    if settings.cat_id.is_empty() {
-        settings.cat_id = generate_random_cat_id();
+    let target_cat_id = if let Some(uuid) = query_smbios_uuid() {
+        convert_uuid_to_cat_id(&uuid)
+    } else {
+        if settings.cat_id.is_empty() {
+            generate_random_cat_id()
+        } else {
+            settings.cat_id.clone()
+        }
+    };
+
+    if settings.cat_id != target_cat_id {
+        settings.cat_id = target_cat_id;
         changed = true;
     }
 
@@ -249,5 +315,25 @@ mod tests {
         assert!(!migrated.show_monitor_data_in_taskbar);
 
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn test_uuid_cat_id_conversion() {
+        let uuid1 = "232BAA30-C234-5440-95F2-E3028F9818EC";
+        let uuid2 = "232BAA30-C234-5440-95F2-E3028F9818EC "; // with trailing space
+        let uuid3 = "9F52E302-8F98-18EC-232B-AA30C2345440"; // different UUID
+
+        let id1 = convert_uuid_to_cat_id(uuid1);
+        let id2 = convert_uuid_to_cat_id(uuid2);
+        let id3 = convert_uuid_to_cat_id(uuid3);
+
+        assert_eq!(id1.len(), 10);
+        assert!(id1.chars().all(|c| c.is_ascii_alphanumeric()));
+
+        // Test determinism (same input, same output)
+        assert_eq!(id1, id2);
+
+        // Test distinctness (different input, different output)
+        assert_ne!(id1, id3);
     }
 }
