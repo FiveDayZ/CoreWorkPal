@@ -2730,6 +2730,24 @@ label {
   min-height: 0;
   overflow: hidden;
 }
+.cwp-settings-portrait-top-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.cwp-portrait-cat-id {
+  font-family: var(--font-pixel-title);
+  font-size: 8px;
+  color: var(--color-brand-orange-strong);
+  background: var(--color-bg-950);
+  border: 1px solid var(--color-border-soft);
+  padding: 2px 6px;
+  border-radius: 2px;
+  letter-spacing: 0.5px;
+  user-select: text;
+}
 .cwp-portrait-avatar-wrapper {
   width: 58px;
   height: 58px;

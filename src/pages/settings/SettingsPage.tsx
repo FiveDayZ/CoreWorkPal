@@ -108,31 +108,22 @@ export function SettingsPage() {
       <div className="cwp-settings-grid">
         {/* Left Column: Chibi Companion Portrait Card */}
         <div className="cwp-settings-portrait-card">
-          <div className="cwp-portrait-avatar-wrapper">
-            <img src={icons.corecatAvatar} alt="CoreCat Avatar Large" />
-          </div>
-          {settings?.catId && (
-            <div
-              style={{
-                fontFamily: "var(--font-pixel-title)",
-                fontSize: "8px",
-                color: "var(--color-brand-orange-strong)",
-                background: "var(--color-bg-950)",
-                border: "1px solid var(--color-border-soft)",
-                padding: "2px 6px",
-                marginTop: "4px",
-                borderRadius: "2px",
-                letterSpacing: "0.5px",
-                userSelect: "text",
-              }}
-              title="您的宠物唯一识别码 CatID"
-            >
-              ID: {settings.catId}
+          <div className="cwp-settings-portrait-top-section">
+            <div className="cwp-portrait-avatar-wrapper">
+              <img src={icons.corecatAvatar} alt="CoreCat Avatar Large" />
             </div>
-          )}
-          <div className="cwp-portrait-info">
-            <div className="cwp-portrait-name">CoreCat / 工程猫</div>
-            <div className="cwp-portrait-desc">您的个人硬件工坊诊断助理</div>
+            {settings?.catId && (
+              <div
+                className="cwp-portrait-cat-id"
+                title="您的宠物唯一识别码 CatID"
+              >
+                ID: {settings.catId}
+              </div>
+            )}
+            <div className="cwp-portrait-info">
+              <div className="cwp-portrait-name">CoreCat / 工程猫</div>
+              <div className="cwp-portrait-desc">您的个人硬件工坊诊断助理</div>
+            </div>
           </div>
           <div className="cwp-portrait-actions">
             <button
