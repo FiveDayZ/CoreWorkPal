@@ -439,7 +439,7 @@ export function SettingsPage() {
 
             <div className="cwp-settings-card cwp-settings-card-thresholds">
               <div className="cwp-settings-card-title">
-                <PixelIcon name="slider" size={14} style={{ marginRight: "6px" }} /> 动画触发阈值
+                <PixelIcon name="slider" size={14} style={{ marginRight: "6px" }} /> 动作触发值
               </div>
               <div className="cwp-settings-threshold-grid">
                 <div className="cwp-settings-row-inline">
@@ -546,6 +546,7 @@ export function SettingsPage() {
                 <PixelIcon name="shield" size={14} style={{ marginRight: "6px" }} /> 安全与隐私
               </div>
               <div className="cwp-safety-notes-box" style={{ padding: "4px 6px", gap: "2px" }}>
+                <div className="cwp-safety-note-item">轻量级程序大小</div>
                 <div className="cwp-safety-note-item">纯本地离线运行</div>
                 <div className="cwp-safety-note-item">无后台隐蔽占用</div>
                 <div className="cwp-safety-note-item">不涉及区块链挖矿</div>

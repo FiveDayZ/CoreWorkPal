@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { listen, emit } from "@tauri-apps/api/event";
 import { checkUpdate, downloadUpdate, installUpdate } from "../services/tauriCommands";
 import type { UpdateCheckResult, DownloadProgress } from "../types/update";
 import { PixelIcon } from "../ui/PixelIcon";
@@ -21,7 +21,11 @@ export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
   useEffect(() => {
     if (isOpen) {
       handleCheck();
+      void emit("corecat:interaction-state", "updateInstalling");
     }
+    return () => {
+      void emit("corecat:interaction-state", "idle");
+    };
   }, [isOpen]);
 
   useEffect(() => {
