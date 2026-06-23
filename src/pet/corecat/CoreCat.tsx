@@ -179,24 +179,21 @@ export function CoreCat({
   // Detect rapid clicks for Click_Dizzy variant.
   // Track recent click timestamps and switch to dizzy when ≥3 clicks within 1.5s.
   const clickTimestampsRef = useRef<number[]>([]);
+  const lastIsClickingRef = useRef(false);
   const rapidClickThreshold = 3;
   const rapidClickWindowMs = 1500;
 
-  if (animationState === "click") {
-    const now = performance.now();
-    const timestamps = clickTimestampsRef.current;
-    // Record click entry on state change
-    if (timestamps.length === 0 || now - timestamps[timestamps.length - 1] > 50) {
+  useEffect(() => {
+    if (isClicking && !lastIsClickingRef.current) {
+      const now = performance.now();
+      const timestamps = clickTimestampsRef.current;
       timestamps.push(now);
+      while (timestamps.length > 0 && now - timestamps[0] > rapidClickWindowMs) {
+        timestamps.shift();
+      }
     }
-    // Prune old timestamps outside the window
-    while (timestamps.length > 0 && now - timestamps[0] > rapidClickWindowMs) {
-      timestamps.shift();
-    }
-  } else {
-    // Reset when leaving click state
-    clickTimestampsRef.current = [];
-  }
+    lastIsClickingRef.current = isClicking;
+  }, [isClicking]);
 
   const useClickDizzy =
     animationState === "click" &&
