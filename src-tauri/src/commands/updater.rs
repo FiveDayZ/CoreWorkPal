@@ -82,6 +82,10 @@ pub async fn check_update(pat: Option<String>) -> Result<UpdateCheckResult, Stri
         return Err("GitHub API rate limit exceeded or access forbidden. Please configure a GitHub Token.".to_string());
     }
 
+    if response.status() == 404 {
+        return Err("GitHub API returned 404 Not Found. If the repository is private, please provide a valid Access Token. If it is public, please check if the GitHub Actions build has completed and a Release is published.".to_string());
+    }
+
     if !response.status().is_success() {
         return Err(format!(
             "GitHub API returned error status: {}",
