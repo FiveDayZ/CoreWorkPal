@@ -1,10 +1,17 @@
+use std::collections::BTreeMap;
+
+use chrono::{Duration, Local};
 use tauri::{AppHandle, Emitter, State};
 
 pub mod updater;
 
 use crate::{
     app_state::AppState,
-    models::{today_key, AppSettings, AppSettingsPatch, HardwareSnapshot, WorkLogEntry, WorkLogReport, WorkshopState},
+    models::{
+        today_key, AppSettings, AppSettingsPatch, DailyWorkAssessment,
+        DailyWorkAssessmentSummary, DailyWorkAssessmentTrend, HardwareSnapshot, WorkLogEntry,
+        WorkLogReport, WorkshopState,
+    },
     taskbar_embed,
     window_manager,
 };
@@ -117,20 +124,13 @@ pub async fn reward_corecat_interaction(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<WorkshopState, String> {
-    let (animation_state, next_workshop) = {
-        let mut workshop = state.workshop.write().await;
-        apply_corecat_interaction_reward(&mut workshop, action.as_str())?;
-        state.storage.save_workshop(&workshop)?;
-        let animation_state = match action.as_str() {
-            "pet" => "pettingHearts",
-            "sortParts" => "dataSorting",
-            _ => unreachable!("validated in apply_corecat_interaction_reward"),
-        };
-        (animation_state, workshop.clone())
+    let animation_state = match action.as_str() {
+        "pet" => "pettingHearts",
+        "sortParts" => "dataSorting",
+        _ => return Err(format!("unknown CoreCat interaction action: {action}")),
     };
+    let next_workshop = state.workshop.read().await.clone();
 
-    app.emit("workshop:updated", next_workshop.clone())
-        .map_err(|error| format!("failed to emit workshop:updated: {error}"))?;
     emit_corecat_interaction_state(&app, animation_state)?;
     Ok(next_workshop)
 }
@@ -154,6 +154,260 @@ pub async fn get_work_log_report(
         });
 
     Ok(WorkLogReport::from_entry(entry))
+}
+
+#[tauri::command]
+pub async fn get_daily_work_assessment(
+    date: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<DailyWorkAssessment, String> {
+    let date = date.unwrap_or_else(today_key);
+    let work_logs = state.work_logs.read().await;
+    let entry = work_logs
+        .entries
+        .get(&date)
+        .cloned()
+        .unwrap_or_else(|| WorkLogEntry {
+            date: date.clone(),
+            ..Default::default()
+        });
+    let history = build_assessment_history(&work_logs.entries, &date);
+
+    Ok(DailyWorkAssessment::from_entry(entry, &history))
+}
+
+#[tauri::command]
+pub async fn get_daily_work_assessment_history(
+    limit: Option<usize>,
+    state: State<'_, AppState>,
+) -> Result<Vec<DailyWorkAssessmentSummary>, String> {
+    let limit = limit.unwrap_or(14).clamp(1, 31);
+    let work_logs = state.work_logs.read().await;
+
+    Ok(build_calendar_assessment_summaries(&work_logs.entries, limit))
+}
+
+#[tauri::command]
+pub async fn get_daily_work_assessment_trend(
+    limit: Option<usize>,
+    state: State<'_, AppState>,
+) -> Result<DailyWorkAssessmentTrend, String> {
+    let limit = limit.unwrap_or(14).clamp(1, 31);
+    let work_logs = state.work_logs.read().await;
+    let summaries = build_assessment_summaries(&work_logs.entries, limit);
+
+    Ok(DailyWorkAssessmentTrend::from_summaries(&summaries))
+}
+
+fn build_assessment_summaries(
+    entries: &BTreeMap<String, WorkLogEntry>,
+    limit: usize,
+) -> Vec<DailyWorkAssessmentSummary> {
+    entries
+        .iter()
+        .rev()
+        .filter(|(_, entry)| entry_has_assessment_signal(entry))
+        .take(limit)
+        .map(|(date, entry)| {
+            let history = build_assessment_history(entries, date);
+            DailyWorkAssessment::from_entry(entry.clone(), &history).summary(true)
+        })
+        .collect()
+}
+
+fn build_calendar_assessment_summaries(
+    entries: &BTreeMap<String, WorkLogEntry>,
+    limit: usize,
+) -> Vec<DailyWorkAssessmentSummary> {
+    recent_calendar_dates(limit)
+        .into_iter()
+        .map(|date| {
+            let entry = entries
+                .get(&date)
+                .cloned()
+                .unwrap_or_else(|| WorkLogEntry {
+                    date: date.clone(),
+                    ..Default::default()
+                });
+            let has_data = entry_has_assessment_signal(&entry);
+            let history = build_assessment_history(entries, &date);
+
+            DailyWorkAssessment::from_entry(entry, &history).summary(has_data)
+        })
+        .collect()
+}
+
+fn recent_calendar_dates(limit: usize) -> Vec<String> {
+    let today = Local::now().date_naive();
+
+    (0..limit)
+        .map(|offset| {
+            (today - Duration::days(offset as i64))
+                .format("%Y-%m-%d")
+                .to_string()
+        })
+        .collect()
+}
+
+fn build_assessment_history(
+    entries: &BTreeMap<String, WorkLogEntry>,
+    date: &str,
+) -> Vec<WorkLogEntry> {
+    entries
+        .iter()
+        .filter(|(entry_date, entry)| {
+            entry_date.as_str() < date && entry_has_assessment_signal(entry)
+        })
+        .rev()
+        .take(7)
+        .map(|(_, entry)| entry.clone())
+        .collect()
+}
+
+fn entry_has_assessment_signal(entry: &WorkLogEntry) -> bool {
+    entry.sample_count > 0
+        || entry.active_seconds > 0
+        || entry.mouse_click_count > 0
+        || entry.keyboard_press_count > 0
+}
+
+#[cfg(test)]
+mod command_tests {
+    use super::*;
+
+    #[test]
+    fn assessment_history_is_newest_first_and_skips_empty_entries() {
+        let mut entries = BTreeMap::new();
+        entries.insert(
+            "2026-06-20".to_string(),
+            WorkLogEntry {
+                date: "2026-06-20".to_string(),
+                ..Default::default()
+            },
+        );
+        entries.insert(
+            "2026-06-21".to_string(),
+            WorkLogEntry {
+                date: "2026-06-21".to_string(),
+                sample_count: 12,
+                ..Default::default()
+            },
+        );
+        entries.insert(
+            "2026-06-22".to_string(),
+            WorkLogEntry {
+                date: "2026-06-22".to_string(),
+                keyboard_press_count: 180,
+                ..Default::default()
+            },
+        );
+        entries.insert(
+            "2026-06-23".to_string(),
+            WorkLogEntry {
+                date: "2026-06-23".to_string(),
+                active_seconds: 900,
+                ..Default::default()
+            },
+        );
+
+        let history = build_assessment_history(&entries, "2026-06-24");
+
+        assert_eq!(
+            history.iter().map(|entry| entry.date.as_str()).collect::<Vec<_>>(),
+            vec!["2026-06-23", "2026-06-22", "2026-06-21"]
+        );
+    }
+
+    #[test]
+    fn assessment_history_excludes_selected_date() {
+        let mut entries = BTreeMap::new();
+        for date in ["2026-06-21", "2026-06-22", "2026-06-23"] {
+            entries.insert(
+                date.to_string(),
+                WorkLogEntry {
+                    date: date.to_string(),
+                    sample_count: 1,
+                    ..Default::default()
+                },
+            );
+        }
+
+        let history = build_assessment_history(&entries, "2026-06-23");
+
+        assert_eq!(
+            history.iter().map(|entry| entry.date.as_str()).collect::<Vec<_>>(),
+            vec!["2026-06-22", "2026-06-21"]
+        );
+    }
+
+    #[test]
+    fn assessment_summaries_are_limited_to_recent_signal_days() {
+        let mut entries = BTreeMap::new();
+        entries.insert(
+            "2026-06-20".to_string(),
+            WorkLogEntry {
+                date: "2026-06-20".to_string(),
+                sample_count: 4,
+                active_seconds: 240,
+                ..Default::default()
+            },
+        );
+        entries.insert(
+            "2026-06-21".to_string(),
+            WorkLogEntry {
+                date: "2026-06-21".to_string(),
+                ..Default::default()
+            },
+        );
+        entries.insert(
+            "2026-06-22".to_string(),
+            WorkLogEntry {
+                date: "2026-06-22".to_string(),
+                keyboard_press_count: 200,
+                ..Default::default()
+            },
+        );
+        entries.insert(
+            "2026-06-23".to_string(),
+            WorkLogEntry {
+                date: "2026-06-23".to_string(),
+                sample_count: 8,
+                active_seconds: 600,
+                ..Default::default()
+            },
+        );
+
+        let summaries = build_assessment_summaries(&entries, 2);
+
+        assert_eq!(summaries.len(), 2);
+        assert_eq!(summaries[0].date, "2026-06-23");
+        assert_eq!(summaries[1].date, "2026-06-22");
+    }
+
+    #[test]
+    fn calendar_assessment_summaries_include_empty_dates() {
+        let dates = recent_calendar_dates(3);
+        let mut entries = BTreeMap::new();
+        entries.insert(
+            dates[1].clone(),
+            WorkLogEntry {
+                date: dates[1].clone(),
+                sample_count: 5,
+                active_seconds: 300,
+                ..Default::default()
+            },
+        );
+
+        let summaries = build_calendar_assessment_summaries(&entries, 3);
+
+        assert_eq!(summaries.len(), 3);
+        assert_eq!(summaries[0].date, dates[0]);
+        assert!(!summaries[0].has_data);
+        assert_eq!(summaries[1].date, dates[1]);
+        assert!(summaries[1].has_data);
+        assert_eq!(summaries[2].date, dates[2]);
+        assert!(!summaries[2].has_data);
+    }
 }
 
 #[tauri::command]
@@ -298,32 +552,6 @@ pub async fn toggle_pet_panel(app: AppHandle) -> Result<(), String> {
 fn emit_corecat_interaction_state(app: &AppHandle, state: &'static str) -> Result<(), String> {
     app.emit("corecat:interaction-state", state)
         .map_err(|error| format!("failed to emit corecat:interaction-state: {error}"))
-}
-
-fn apply_corecat_interaction_reward(
-    workshop: &mut WorkshopState,
-    action: &str,
-) -> Result<(), String> {
-    let today = today_key();
-    if workshop.last_daily_reset_date != today {
-        workshop.today_parts = 0.0;
-        workshop.today_insight = 0.0;
-        workshop.last_daily_reset_date = today;
-    }
-
-    match action {
-        "pet" => {
-            workshop.insight += 0.01;
-            workshop.today_insight += 0.01;
-            Ok(())
-        }
-        "sortParts" => {
-            workshop.parts += 0.1;
-            workshop.today_parts += 0.1;
-            Ok(())
-        }
-        _ => Err(format!("unknown CoreCat interaction action: {action}")),
-    }
 }
 
 #[tauri::command]

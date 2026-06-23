@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     app_state::AppState,
-    models::{today_key, WorkLogEntry, WorkLogReport},
+    models::{current_timestamp_ms, date_key_from_timestamp, WorkLogEntry, WorkLogReport},
 };
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -55,7 +55,8 @@ pub fn start_input_activity_pump(app: AppHandle) {
 
 async fn flush_input_activity(app: &AppHandle, delta: InputActivityDelta) {
     let state = app.state::<AppState>();
-    let date = today_key();
+    let timestamp = current_timestamp_ms();
+    let date = date_key_from_timestamp(timestamp);
     let updated_report = {
         let mut work_logs = state.work_logs.write().await;
         let entry = work_logs
@@ -66,7 +67,7 @@ async fn flush_input_activity(app: &AppHandle, delta: InputActivityDelta) {
                 ..Default::default()
             });
 
-        entry.record_input_activity(delta.mouse_clicks, delta.keyboard_presses);
+        entry.record_input_activity_at(delta.mouse_clicks, delta.keyboard_presses, timestamp);
         let report = WorkLogReport::from_entry(entry.clone());
 
         if let Err(error) = state.storage.save_work_logs(&work_logs) {

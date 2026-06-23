@@ -38,20 +38,20 @@ export const mainRoutes: Array<{
     ),
   },
   {
-    key: "settings",
-    label: "Settings",
-    element: lazy(() =>
-      import("./pages/settings/SettingsPage").then((module) => ({
-        default: module.SettingsPage,
-      })),
-    ),
-  },
-  {
     key: "workLog",
     label: "Work Log",
     element: lazy(() =>
       import("./pages/work-log/WorkLogPage").then((module) => ({
         default: module.WorkLogPage,
+      })),
+    ),
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    element: lazy(() =>
+      import("./pages/settings/SettingsPage").then((module) => ({
+        default: module.SettingsPage,
       })),
     ),
   },

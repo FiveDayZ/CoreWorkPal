@@ -25,7 +25,7 @@ const routeLabels: Record<MainRoute, { icon: PixelIconName; text: string }> = {
   devices: { icon: "devices", text: "设备" },
   workshop: { icon: "tools", text: "工坊" },
   settings: { icon: "settings", text: "设置" },
-  workLog: { icon: "log", text: "日志" },
+  workLog: { icon: "log", text: "日报" },
   about: { icon: "info", text: "关于" },
 };
 

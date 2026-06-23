@@ -1,6 +1,6 @@
 [package]
 name = "core-work-pal"
-version = "0.1.7"
+version = "0.1.8"
 description = "CoreWorkPal desktop scaffold"
 authors = ["CoreWorkPal"]
 edition = "2021"

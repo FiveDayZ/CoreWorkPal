@@ -65,7 +65,7 @@ export function DashboardPage() {
 
   const handleCleanParts = async () => {
     playAudioFeedback("click", settings?.enableSound ?? false);
-    setLocalBubble("零件仓库已整理，库存 +0.1。");
+    setLocalBubble("零件仓库已整理。");
     setTimeout(() => setLocalBubble(null), 3000);
     try {
       setWorkshopState(await rewardCoreCatInteraction("sortParts"));

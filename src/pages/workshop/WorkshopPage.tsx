@@ -44,6 +44,12 @@ interface ModuleData {
 
 const MAX_WORKSHOP_LEVEL = 100;
 const MAX_MODULE_SUB_LEVEL = 100;
+const ECONOMY_REFERENCE_PARTS_PER_HOUR = 115;
+const ECONOMY_REFERENCE_INSIGHT_PER_HOUR = 6.8;
+const MODULE_PARTS_UPGRADE_PARTS_WEIGHT = 1.15;
+const MODULE_PARTS_UPGRADE_INSIGHT_WEIGHT = 0.75;
+const MODULE_PROCESS_UPGRADE_PARTS_WEIGHT = 0.9;
+const MODULE_PROCESS_UPGRADE_INSIGHT_WEIGHT = 1.2;
 
 export function WorkshopPage() {
   const workshop = useWorkshopStore((store) => store.state);
@@ -91,7 +97,7 @@ export function WorkshopPage() {
     }
     const cost = getSubCost(currentSubLevel, type, currentLevel);
     if (currentParts < cost.parts || currentInsight < cost.insight) {
-      alert("零件或灵感不足！");
+      alert(getResourceShortageMessage(cost, currentParts, currentInsight));
       return;
     }
 
@@ -505,9 +511,13 @@ function buildModules(
 }
 
 function getWorkshopUpgradeCost(level: number): ResourceCost {
+  const safeLevel = Math.max(1, level);
+  const targetHours =
+    3.2 + safeLevel * 1.9 + Math.pow(safeLevel, 1.62) * 1.05;
+
   return {
-    parts: Math.round(level * 300 + Math.pow(level, 1.7) * 80),
-    insight: Math.round(level * 10 + Math.pow(level, 1.6) * 8),
+    parts: Math.round(ECONOMY_REFERENCE_PARTS_PER_HOUR * targetHours),
+    insight: Math.round(ECONOMY_REFERENCE_INSIGHT_PER_HOUR * targetHours),
   };
 }
 
@@ -517,16 +527,45 @@ function getSubCost(
   workshopLevel: number,
 ): ResourceCost {
   const safeLevel = Math.max(1, level);
+  const safeWorkshopLevel = Math.max(1, workshopLevel);
+  const targetHours =
+    2.5 +
+    safeLevel * 1.35 +
+    Math.pow(safeLevel, 1.55) * 0.85 +
+    safeWorkshopLevel * 0.38;
+
   if (type === "parts") {
     return {
-      parts: Math.round(80 + safeLevel * 60 + workshopLevel * 30 + Math.pow(safeLevel, 1.8) * 12),
-      insight: Math.max(0, Math.floor((safeLevel - 1) * 1.5)),
+      parts: Math.round(
+        ECONOMY_REFERENCE_PARTS_PER_HOUR *
+          targetHours *
+          MODULE_PARTS_UPGRADE_PARTS_WEIGHT,
+      ),
+      insight: Math.max(
+        1,
+        Math.round(
+          ECONOMY_REFERENCE_INSIGHT_PER_HOUR *
+            targetHours *
+            MODULE_PARTS_UPGRADE_INSIGHT_WEIGHT,
+        ),
+      ),
     };
   }
 
   return {
-    parts: Math.round(100 + safeLevel * 70 + workshopLevel * 28 + Math.pow(safeLevel, 1.9) * 15),
-    insight: Math.max(1, Math.ceil(safeLevel * 1.8)),
+    parts: Math.round(
+      ECONOMY_REFERENCE_PARTS_PER_HOUR *
+        targetHours *
+        MODULE_PROCESS_UPGRADE_PARTS_WEIGHT,
+    ),
+    insight: Math.max(
+      1,
+      Math.round(
+        ECONOMY_REFERENCE_INSIGHT_PER_HOUR *
+          targetHours *
+          MODULE_PROCESS_UPGRADE_INSIGHT_WEIGHT,
+      ),
+    ),
   };
 }
 
@@ -544,19 +583,35 @@ function moduleBonus(levels: ModuleUpgradeLevels, partsWeight: number, processWe
 function formatCost(cost: ResourceCost): React.ReactNode {
   if (cost.insight > 0) {
     return (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+      <span className="cwp-upgrade-cost">
         升级 <PixelIcon name="wrench" size={12} style={{ color: "var(--color-brand-orange-strong)" }} />
-        {cost.parts} / <PixelIcon name="sparkle" size={12} style={{ color: "var(--color-insight-gold)", marginLeft: "4px" }} />
+        {cost.parts} / <PixelIcon name="sparkle" size={12} style={{ color: "var(--color-insight-gold)" }} />
         {cost.insight}
       </span>
     );
   }
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+    <span className="cwp-upgrade-cost">
       升级 <PixelIcon name="wrench" size={12} style={{ color: "var(--color-brand-orange-strong)" }} />
       {cost.parts}
     </span>
   );
+}
+
+function getResourceShortageMessage(
+  cost: ResourceCost,
+  currentParts: number,
+  currentInsight: number,
+) {
+  const shortages: string[] = [];
+  if (currentParts < cost.parts) {
+    shortages.push(`零件不足：当前 ${formatParts(currentParts)} / 需要 ${cost.parts}`);
+  }
+  if (currentInsight < cost.insight) {
+    shortages.push(`灵感不足：当前 ${formatParts(currentInsight)} / 需要 ${cost.insight}`);
+  }
+
+  return shortages.join("\n");
 }
 
 function formatMemoryMetric(
