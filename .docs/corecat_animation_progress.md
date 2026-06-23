@@ -16,6 +16,7 @@
 - [x] TypeScript 编译通过
 - [x] Vite 构建成功
 - [x] CoreCat 动画测试通过
+- [x] 修复 Click_Dizzy 动画触发问题：将 PetWindow 侧单次点击 nod/click 的 state 维持时间由 300ms 缩短为 80ms，并移除了 animationActionController 中对 click 状态被后续点击打断和叠加延时的限制。如此使多次快速点击的 transition 被正确感知并叠加，成功实现 dizzy 状态在快速连续点击 3 次及以上的顺畅触发，并补充了对应的自动化测试断言验证。
 - [x] Tauri release 二进制编译成功 (57.21s)
 
 ## 已完成任务 (UI 布局与增益看板优化部分)

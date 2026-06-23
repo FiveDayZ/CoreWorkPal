@@ -23,8 +23,7 @@ export function updateCoreCatActionController(
   clickInput: boolean,
   now: number,
 ): CoreCatActionControllerResult {
-  const didStartClick =
-    clickInput && !state.previousClickInput && now >= state.clickUntilMs;
+  const didStartClick = clickInput && !state.previousClickInput;
   const clickUntilMs = didStartClick
     ? now + CORE_CAT_ANIMATION_CONFIG.click.totalMs
     : state.clickUntilMs;

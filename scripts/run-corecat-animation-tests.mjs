@@ -484,6 +484,18 @@ action = updateCoreCatActionController(action.state, true, 1400);
 assert.equal(action.didStartClick, true);
 assert.equal(action.isClicking, true);
 
+// Test rapid clicking / click interruption and extension
+let rapidAction = createCoreCatActionControllerState();
+// First click at 2000ms
+rapidAction = updateCoreCatActionController(rapidAction, true, 2000).state;
+// Release click at 2080ms
+rapidAction = updateCoreCatActionController(rapidAction, false, 2080).state;
+// Second click at 2150ms (before 2300ms)
+let secondClickRes = updateCoreCatActionController(rapidAction, true, 2150);
+assert.equal(secondClickRes.didStartClick, true);
+assert.equal(secondClickRes.isClicking, true);
+assert.equal(secondClickRes.state.clickUntilMs, 2450);
+
 const hoverRect = { left: 100, top: 50, width: 160, height: 160 };
 const hoverCenter = resolveCoreCatHoverHitArea(180, 130, hoverRect);
 assert.equal(hoverCenter.isInside, true);

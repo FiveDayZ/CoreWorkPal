@@ -110,6 +110,7 @@ export function PetWindow() {
   const petCanvasRef = useRef<HTMLDivElement | null>(null);
   const saveTimerRef = useRef<number | null>(null);
   const interactionTimerRef = useRef<number | null>(null);
+  const noddingTimerRef = useRef<number | null>(null);
   const debugInfoTimerRef = useRef(0);
   const debugInfoStateRef = useRef<string | null>(null);
   const debugInfoRef = useRef<CoreCatDebugInfo | null>(null);
@@ -425,6 +426,9 @@ export function PetWindow() {
       if (saveTimerRef.current != null) {
         window.clearTimeout(saveTimerRef.current);
       }
+      if (noddingTimerRef.current != null) {
+        window.clearTimeout(noddingTimerRef.current);
+      }
     };
   }, []);
 
@@ -583,18 +587,29 @@ export function PetWindow() {
       return;
     }
 
+    if (noddingTimerRef.current != null) {
+      window.clearTimeout(noddingTimerRef.current);
+    }
     setIsNodding(true);
     playAudioFeedback("click", settings?.enableSound ?? false);
-    window.setTimeout(() => setIsNodding(false), 300);
-
+    noddingTimerRef.current = window.setTimeout(() => {
+      noddingTimerRef.current = null;
+      setIsNodding(false);
+    }, 80);
   }
 
   function handleDoubleClick() {
     dragMovedRef.current = false;
     setIsMenuOpen(false);
     playAudioFeedback("meow", settings?.enableSound ?? false);
+    if (noddingTimerRef.current != null) {
+      window.clearTimeout(noddingTimerRef.current);
+    }
     setIsNodding(true);
-    window.setTimeout(() => setIsNodding(false), 300);
+    noddingTimerRef.current = window.setTimeout(() => {
+      noddingTimerRef.current = null;
+      setIsNodding(false);
+    }, 80);
   }
 
   function triggerRewardAction(action: "pet" | "sortParts") {
