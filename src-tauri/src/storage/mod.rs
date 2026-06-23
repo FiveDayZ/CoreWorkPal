@@ -6,7 +6,9 @@ use std::{
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::models::{AppSettings, LayoutState, WorkLogBook, WorkshopState};
+use crate::models::{
+    AppSettings, LayoutState, WorkLogBook, WorkshopState, APP_SETTINGS_SCHEMA_VERSION,
+};
 
 #[derive(Debug)]
 pub struct StorageService {
@@ -26,7 +28,11 @@ impl StorageService {
     }
 
     pub fn load_or_create_settings(&self) -> Result<AppSettings, String> {
-        self.load_or_create("settings.json")
+        let mut settings = self.load_or_create::<AppSettings>("settings.json")?;
+        if migrate_settings(&mut settings) {
+            self.save_settings(&settings)?;
+        }
+        Ok(settings)
     }
 
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), String> {
@@ -117,6 +123,20 @@ impl StorageService {
     }
 }
 
+fn migrate_settings(settings: &mut AppSettings) -> bool {
+    if settings.schema_version >= APP_SETTINGS_SCHEMA_VERSION {
+        return false;
+    }
+
+    if settings.schema_version < 2 {
+        settings.is_monitor_bar_visible = false;
+        settings.show_monitor_data_in_taskbar = false;
+    }
+
+    settings.schema_version = APP_SETTINGS_SCHEMA_VERSION;
+    true
+}
+
 fn app_data_root() -> PathBuf {
     std::env::var_os("APPDATA")
         .map(PathBuf::from)
@@ -150,7 +170,9 @@ mod tests {
         let layout = storage.load_or_create_layout().unwrap();
         let work_logs = storage.load_or_create_work_logs().unwrap();
 
-        assert_eq!(settings.schema_version, 1);
+        assert_eq!(settings.schema_version, APP_SETTINGS_SCHEMA_VERSION);
+        assert!(!settings.is_monitor_bar_visible);
+        assert!(!settings.show_monitor_data_in_taskbar);
         assert_eq!(workshop.schema_version, 1);
         assert_eq!(layout.schema_version, 1);
         assert_eq!(work_logs.schema_version, 1);
@@ -170,9 +192,28 @@ mod tests {
 
         let settings = storage.load_or_create_settings().unwrap();
 
-        assert_eq!(settings.schema_version, 1);
+        assert_eq!(settings.schema_version, APP_SETTINGS_SCHEMA_VERSION);
         let backup_count = fs::read_dir(root.join("backups")).unwrap().count();
         assert_eq!(backup_count, 1);
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn migrates_monitor_surfaces_to_lazy_startup() {
+        let root = unique_test_root("settings-migrate");
+        let storage = StorageService::new_with_root(root.clone()).unwrap();
+        let mut settings = AppSettings::default();
+        settings.schema_version = 1;
+        settings.is_monitor_bar_visible = true;
+        settings.show_monitor_data_in_taskbar = true;
+        storage.save_settings(&settings).unwrap();
+
+        let migrated = storage.load_or_create_settings().unwrap();
+
+        assert_eq!(migrated.schema_version, APP_SETTINGS_SCHEMA_VERSION);
+        assert!(!migrated.is_monitor_bar_visible);
+        assert!(!migrated.show_monitor_data_in_taskbar);
 
         let _ = fs::remove_dir_all(root);
     }

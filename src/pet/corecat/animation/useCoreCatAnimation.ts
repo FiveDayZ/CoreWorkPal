@@ -69,9 +69,17 @@ const initialFrame: CoreCatAnimationFrame = {
 };
 
 interface StandbyLoopState {
-  state: "idle" | "dataSorting";
+  state: StandbyAnimationState;
   until: number;
 }
+
+type StandbyAnimationState = "idle" | "scaredByMouse" | "eatingFish";
+
+const standbyAnimationStates: StandbyAnimationState[] = [
+  "idle",
+  "scaredByMouse",
+  "eatingFish",
+];
 
 export function useCoreCatAnimation(options: UseCoreCatAnimationOptions) {
   const [frame, setFrame] = useState<CoreCatAnimationFrame>(initialFrame);
@@ -466,12 +474,18 @@ function resolveStandbyLoopState(
 
   if (now >= standbyLoopRef.current.until) {
     standbyLoopRef.current = {
-      state: Math.random() < 0.5 ? "idle" : "dataSorting",
+      state: pickRandomStandbyAnimationState(),
       until: now + randomInRange(5000, 10000),
     };
   }
 
   return standbyLoopRef.current.state;
+}
+
+function pickRandomStandbyAnimationState(): StandbyAnimationState {
+  return standbyAnimationStates[
+    Math.floor(Math.random() * standbyAnimationStates.length)
+  ];
 }
 
 function resolveEyeState(

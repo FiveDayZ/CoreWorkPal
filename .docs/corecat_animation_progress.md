@@ -122,5 +122,12 @@
 - [x] 实现 DPI 缩放敏感的位置还原：在 `ensure_webview_window` 中对重建的 `"pet-panel"` 进行物理 DPI 缩放敏感的坐标计算，使其即使在重建后也能完美无缝地弹在悬浮猫咪旁。
 - [x] 修复嵌套 Tokio Runtime 崩溃 Bug：使用 `RwLock::blocking_read()` 代替 `block_on` 异步读取 AppState，消除了多线程环境下的崩溃隐患。
 
+## 已完成任务 (快捷面板位置、拖拽与退出功能优化部分)
+
+- [x] 快捷面板位置靠左适配：将 `pet-panel` 面板在创建时的初始坐标由猫咪右侧调整至左侧，防止右侧贴边时弹窗逸出桌面视窗边界。同时，移除了 Rust 代码中未使用的 `pet_width` 变量以消除编译器警告。
+- [x] 面板指针与动画镜像：将面板的小三角指针（Arrow）样式改为 `cwp-panel-arrow-right` 并在右侧渲染以指向猫咪。同步将 `.cwp-pet-panel` 的 `transform-origin` 设为 `right 48px`，并将开启动画 `panel-elastic-open`、关闭动画 `panel-toolkit-recycle` 与指针动画 `panel-arrow-recycle` 的 X 轴平移反向镜像，确保视觉动力学自然。
+- [x] 自由拖拽面板实现：扩展 React 组件 `GlassPanel` 的 Props 以继承 `React.HTMLAttributes<HTMLElement>`。在 `PetQuickPanelWindow.tsx` 中注册 `onMouseDown` 和 `onMouseMove` 监听，避开按钮、输入框、滑块等交互控件后触发 Tauri 层的拖拽。同时在 `useEffect` 中注册全局的 `pointerup` 监听，在释放时恢复状态。添加 `.cwp-pet-panel` 的 `cursor: move` 手势。
+- [x] 退出机制异常修复：在 `lib.rs` 中引入线程安全的全局原子布尔标记 `IS_EXITING`。在拦截 `RunEvent::ExitRequested` 阻止默认关闭退出的同时，判断当该标记为 `true` 时不予阻止。并在 `commands/mod.rs`（“退出工坊系统”）与 `tray/mod.rs`（系统托盘“退出”）触发事件时，均将 `IS_EXITING` 置为 `true` 后触发 `app.exit(0)`，完美修复了无法正常退出程序的 Bug。
+
 ## 可执行文件位置
 `src-tauri/target/release/core-work-pal.exe`

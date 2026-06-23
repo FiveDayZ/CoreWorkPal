@@ -24,6 +24,8 @@ const debugStates: DebugStateButton[] = [
   { label: "Memory", state: "memoryCrowded", status: "ready" },
   { label: "Repair", state: "repairing", status: "ready" },
   { label: "Data", state: "dataSorting", status: "ready" },
+  { label: "Scared", state: "scaredByMouse", status: "ready" },
+  { label: "Fish", state: "eatingFish", status: "ready" },
   { label: "Pet", state: "pettingHearts", status: "ready" },
   { label: "Sleep", state: "sleep", status: "ready" },
   { label: "Low Power", state: "lowPowerStatic", status: "ready" },

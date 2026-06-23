@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { MainRoute } from "../routes";
+import type { MainRoute } from "../routeTypes";
 import type { HardwareSnapshot } from "../types/hardware";
 import type { AppSettings, AppSettingsPatch } from "../types/settings";
 import type { WorkLogReport } from "../types/workLog";
@@ -12,10 +12,10 @@ function isTauriRuntime() {
 }
 
 const browserSettings: AppSettings = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   launchAtStartup: false,
   isCatVisible: true,
-  isMonitorBarVisible: true,
+  isMonitorBarVisible: false,
   enableSleepMode: true,
   enableSound: false,
   enableNotifications: false,
@@ -23,7 +23,7 @@ const browserSettings: AppSettings = {
   enableLowPowerMode: false,
   enableStaticCatMode: false,
   enablePetBubble: true,
-  showMonitorDataInTaskbar: true,
+  showMonitorDataInTaskbar: false,
   samplingIntervalMs: 2000,
   backgroundSamplingIntervalMs: 5000,
   dataSortingCpuThreshold: 40,

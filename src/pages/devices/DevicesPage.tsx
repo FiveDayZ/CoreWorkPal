@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { formatBytes } from "../../services/formatters";
+import { getHardwareSnapshot } from "../../services/tauriCommands";
 import { useHardwareStore } from "../../stores/hardwareStore";
 import type {
   HardwareDeviceInfo,
@@ -16,7 +18,16 @@ interface DeviceSection {
 
 export function DevicesPage() {
   const snapshot = useHardwareStore((state) => state.snapshot);
+  const setSnapshot = useHardwareStore((state) => state.setSnapshot);
   const sections = buildDeviceSections(snapshot);
+
+  useEffect(() => {
+    void getHardwareSnapshot()
+      .then(setSnapshot)
+      .catch((error) => {
+        console.error("Failed to load hardware inventory:", error);
+      });
+  }, [setSnapshot]);
 
   return (
     <div className="cwp-page cwp-device-page">

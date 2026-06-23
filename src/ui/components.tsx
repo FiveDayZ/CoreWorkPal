@@ -10,15 +10,15 @@ function joinClassNames(
   return classNames.filter(Boolean).join(" ");
 }
 
-export interface GlassPanelProps {
+export interface GlassPanelProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
 }
 
-export function GlassPanel({ children, className, style }: GlassPanelProps) {
+export function GlassPanel({ children, className, style, ...props }: GlassPanelProps) {
   return (
-    <section className={joinClassNames("cwp-glass-panel", className)} style={style}>
+    <section className={joinClassNames("cwp-glass-panel", className)} style={style} {...props}>
       {children}
     </section>
   );

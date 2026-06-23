@@ -949,12 +949,12 @@ label {
   from {
     opacity: 0;
     filter: blur(4px);
-    transform: translateX(-22px) translateY(12px) scale(0.54, 0.38);
+    transform: translateX(22px) translateY(12px) scale(0.54, 0.38);
   }
   68% {
     opacity: 1;
     filter: blur(0);
-    transform: translateX(4px) translateY(-2px) scale(1.02, 1.04);
+    transform: translateX(-4px) translateY(-2px) scale(1.02, 1.04);
   }
   to {
     opacity: 1;
@@ -979,9 +979,10 @@ label {
   box-shadow: inset -2px -2px 0px #000, inset 2px 2px 0px rgba(255, 255, 255, 0.05);
   border-radius: 0px;
   overflow: hidden;
-  transform-origin: left 48px;
+  transform-origin: right 48px;
   will-change: transform, opacity;
   animation: panel-elastic-open 150ms steps(3) forwards;
+  cursor: move;
 }
 
 .cwp-pet-panel-root.is-closing .cwp-pet-panel {
@@ -1000,7 +1001,7 @@ label {
 
   to {
     opacity: 0;
-    transform: translateX(-16px) translateY(8px) scale(0.6);
+    transform: translateX(16px) translateY(8px) scale(0.6);
   }
 }
 
@@ -1012,7 +1013,7 @@ label {
 
   to {
     opacity: 0;
-    transform: translateX(-8px) scale(0.3);
+    transform: translateX(8px) scale(0.3);
   }
 }
 

@@ -155,6 +155,7 @@ fn handle_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
             });
         }
         MENU_QUIT => {
+            crate::IS_EXITING.store(true, std::sync::atomic::Ordering::SeqCst);
             app.exit(0);
         }
         _ => {}

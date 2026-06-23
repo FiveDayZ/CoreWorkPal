@@ -244,7 +244,7 @@ export function SettingsPage() {
                   <label className="cwp-switch-label">
                     <input
                       type="checkbox"
-                      checked={settings?.isMonitorBarVisible ?? true}
+                      checked={settings?.isMonitorBarVisible ?? false}
                       onChange={(e) => setMonitorBarVisible(e.target.checked)}
                     />
                     <span className="cwp-switch-slider" />
@@ -369,7 +369,7 @@ export function SettingsPage() {
                   <label className="cwp-switch-label">
                     <input
                       type="checkbox"
-                      checked={settings?.showMonitorDataInTaskbar ?? true}
+                      checked={settings?.showMonitorDataInTaskbar ?? false}
                       onChange={(e) =>
                         void updateSettings({
                           showMonitorDataInTaskbar: e.target.checked,

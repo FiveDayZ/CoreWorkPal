@@ -68,6 +68,8 @@ const STATE_TO_STEM: Record<CoreCatAnimationState, string> = {
   memoryCrowded: "Memory_Crowded",
   repairing: "Repairing",
   dataSorting: "dataSorting",
+  scaredByMouse: "Scared_By_Mouse",
+  eatingFish: "Eating_Fish",
   pettingHearts: "Petting_Hearts",
   sleep: "Sleep_Low_Power",
   celebrate: "Celebrate",

@@ -15,6 +15,8 @@ use input_activity::start_input_activity_pump;
 use monitoring::start_hardware_snapshot_pump;
 use tauri::Manager;
 
+pub static IS_EXITING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 pub fn run() {
     #[cfg(debug_assertions)]
     tracing_subscriber::fmt::init();
@@ -65,7 +67,9 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|_app_handle, event| {
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                api.prevent_exit();
+                if !IS_EXITING.load(std::sync::atomic::Ordering::SeqCst) {
+                    api.prevent_exit();
+                }
             }
         });
 }

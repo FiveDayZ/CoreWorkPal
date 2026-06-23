@@ -1,4 +1,4 @@
-import type { HardwareSnapshot } from "../types/hardware";
+import type { HardwareMetricsSnapshot } from "../types/hardware";
 import type { CatState, CatStateChangedEvent } from "../types/pet";
 import type { AppSettings } from "../types/settings";
 
@@ -20,7 +20,7 @@ export interface HardwareCatStateContext {
 }
 
 export function deriveCatStatusFromHardware(
-  snapshot: HardwareSnapshot,
+  snapshot: HardwareMetricsSnapshot,
   settings: AppSettings,
   context: HardwareCatStateContext = {},
 ): CatStateChangedEvent {
@@ -34,7 +34,7 @@ export function deriveCatStatusFromHardware(
 }
 
 export function resolveHardwareCatState(
-  snapshot: HardwareSnapshot,
+  snapshot: HardwareMetricsSnapshot,
   settings: Pick<
     AppSettings,
     | "isCatVisible"
@@ -160,7 +160,7 @@ export function messageForCatState(state: CatState) {
 }
 
 function isTemperatureWarning(
-  snapshot: HardwareSnapshot,
+  snapshot: HardwareMetricsSnapshot,
   settings: Pick<AppSettings, "cpuTemperatureWarning" | "gpuTemperatureWarning">,
   context: HardwareCatStateContext,
 ) {
@@ -185,7 +185,7 @@ function isTemperatureWarning(
 }
 
 export function isTemperatureAboveEnterThreshold(
-  snapshot: HardwareSnapshot,
+  snapshot: HardwareMetricsSnapshot,
   settings: Pick<AppSettings, "cpuTemperatureWarning" | "gpuTemperatureWarning">,
 ) {
   const cpuWarning = Math.max(
@@ -205,7 +205,7 @@ export function isTemperatureAboveEnterThreshold(
   );
 }
 
-export function isTemperatureBelowExitThreshold(snapshot: HardwareSnapshot) {
+export function isTemperatureBelowExitThreshold(snapshot: HardwareMetricsSnapshot) {
   const temperatures = [
     snapshot.cpuTemperatureCelsius,
     snapshot.gpuTemperatureCelsius,
@@ -218,7 +218,7 @@ export function isTemperatureBelowExitThreshold(snapshot: HardwareSnapshot) {
   return temperatures.every((value) => value < temperatureCheckExitCelsius);
 }
 
-function isHeavyLoad(snapshot: HardwareSnapshot) {
+function isHeavyLoad(snapshot: HardwareMetricsSnapshot) {
   return (
     (snapshot.cpuUsagePercent != null &&
       snapshot.cpuUsagePercent >= repairHeavyLoadThreshold) ||
@@ -227,7 +227,7 @@ function isHeavyLoad(snapshot: HardwareSnapshot) {
   );
 }
 
-function isSustainedBusyLoad(snapshot: HardwareSnapshot) {
+function isSustainedBusyLoad(snapshot: HardwareMetricsSnapshot) {
   return (
     snapshot.gpuUsagePercent != null &&
     snapshot.gpuUsagePercent >= repairLightLoadThreshold

@@ -147,6 +147,8 @@ export const CORE_CAT_ANIMATION_CONFIG = {
     sleep: 64,
     memoryCrowded: 62,
     dataSorting: 36,
+    scaredByMouse: 10,
+    eatingFish: 10,
     hover: 30,
     bootWake: 15,
     idle: 10,

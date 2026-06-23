@@ -17,6 +17,7 @@ import {
   saveWindowPosition,
 } from "../../services/tauriCommands";
 import { calculateSystemStability } from "../../services/systemStability";
+import { startDraggingCurrentWindow } from "../../services/windowApi";
 import { useHardwareStore } from "../../stores/hardwareStore";
 import { usePetStore } from "../../stores/petStore";
 import { useSettingsStore } from "../../stores/settingsStore";
@@ -54,6 +55,21 @@ export function PetQuickPanelWindow() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const closeTimerRef = useRef<number | null>(null);
+
+  const dragCandidateRef = useRef(false);
+  const dragMovedRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    function handlePointerUp() {
+      dragCandidateRef.current = false;
+      dragMovedRef.current = false;
+    }
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, []);
 
   useEffect(
     () => () => {
@@ -111,10 +127,41 @@ export function PetQuickPanelWindow() {
         isClosing ? "is-closing" : ""
       }`}
     >
-      {/* Arrow pointing left towards the pet companion */}
-      <div className="cwp-panel-arrow cwp-panel-arrow-left" />
+      {/* Arrow pointing right towards the pet companion */}
+      <div className="cwp-panel-arrow cwp-panel-arrow-right" />
 
-      <GlassPanel className="cwp-pet-panel" style={{ position: "relative" }}>
+      <GlassPanel
+        className="cwp-pet-panel"
+        style={{ position: "relative" }}
+        onMouseDown={(event: React.MouseEvent<HTMLElement>) => {
+          const target = event.target as HTMLElement;
+          if (
+            target.closest("button") ||
+            target.closest(".cwp-secondary-menu") ||
+            target.closest(".cwp-toggle-switch") ||
+            target.closest(".cwp-mini-slider") ||
+            target.closest("input")
+          ) {
+            return;
+          }
+          if (event.button === 0) {
+            dragCandidateRef.current = true;
+            dragMovedRef.current = false;
+            dragStartRef.current = { x: event.screenX, y: event.screenY };
+          }
+        }}
+        onMouseMove={(event: React.MouseEvent<HTMLElement>) => {
+          if (!dragCandidateRef.current || event.buttons !== 1) {
+            return;
+          }
+          const deltaX = Math.abs(event.screenX - dragStartRef.current.x);
+          const deltaY = Math.abs(event.screenY - dragStartRef.current.y);
+          if (!dragMovedRef.current && (deltaX > 3 || deltaY > 3)) {
+            dragMovedRef.current = true;
+            void startDraggingCurrentWindow();
+          }
+        }}
+      >
         <header className="cwp-panel-header">
           <div className="cwp-panel-title">
             <PetAvatar />

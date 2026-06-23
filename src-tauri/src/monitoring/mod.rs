@@ -11,7 +11,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     app_state::AppState,
-    models::{current_timestamp_ms, HardwareSnapshot},
+    models::{current_timestamp_ms, HardwareMetricsSnapshot, HardwareSnapshot},
     pet::PetStateService,
     workshop::ProductionService,
 };
@@ -53,8 +53,11 @@ pub fn start_hardware_snapshot_pump(app: AppHandle) {
                 (snapshot, interval_ms)
             };
 
-            if let Err(error) = app.emit("hardware:snapshot", snapshot.clone()) {
-                tracing::warn!("failed to emit hardware:snapshot: {error}");
+            if let Err(error) = app.emit(
+                "hardware:metrics",
+                HardwareMetricsSnapshot::from(&snapshot),
+            ) {
+                tracing::warn!("failed to emit hardware:metrics: {error}");
             }
 
             update_workshop_for_snapshot(&app, &snapshot).await;

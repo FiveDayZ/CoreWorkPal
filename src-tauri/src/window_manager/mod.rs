@@ -104,11 +104,11 @@ pub async fn ensure_webview_window(app: &AppHandle, label: &str) -> Result<Webvi
                 "pet" => Some((settings.cat_window_x, settings.cat_window_y)),
                 "monitor-bar" => Some((settings.monitor_bar_x, settings.monitor_bar_y)),
                 "pet-panel" => {
-                    let pet_width = 196.0 * scale_factor;
                     let pet_height = 166.0 * scale_factor;
+                    let panel_width = 300.0 * scale_factor;
                     let panel_height = 360.0 * scale_factor;
                     let overlap = 10.0 * scale_factor;
-                    let x = settings.cat_window_x + pet_width - overlap;
+                    let x = settings.cat_window_x - panel_width + overlap;
                     let y = settings.cat_window_y - (panel_height - pet_height);
                     Some((x, y))
                 }

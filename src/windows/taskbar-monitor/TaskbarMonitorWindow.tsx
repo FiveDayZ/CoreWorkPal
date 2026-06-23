@@ -17,7 +17,7 @@ export function TaskbarMonitorWindow() {
   const snapshot = useHardwareStore((state) => state.snapshot);
   const settings = useSettingsStore((state) => state.settings);
   const textRef = useRef<HTMLDivElement | null>(null);
-  const showTaskbarData = settings?.showMonitorDataInTaskbar ?? true;
+  const showTaskbarData = settings?.showMonitorDataInTaskbar ?? false;
   const metrics = settings?.visibleTaskbarMetrics ?? defaultTaskbarMetrics;
   const taskbarMode = settings?.taskbarMonitorMode ?? "Default";
   const displayedMetrics = getDisplayedMetrics(metrics, taskbarMode);

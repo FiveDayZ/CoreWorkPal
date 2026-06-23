@@ -1,4 +1,4 @@
-export interface HardwareSnapshot {
+export interface HardwareMetricsSnapshot {
   timestamp: number;
   cpuUsagePercent: number | null;
   gpuUsagePercent: number | null;
@@ -17,6 +17,9 @@ export interface HardwareSnapshot {
   usedMemoryBytes: number | null;
   cpuPhysicalCoreCount: number | null;
   cpuLogicalCoreCount: number | null;
+}
+
+export interface HardwareSnapshot extends HardwareMetricsSnapshot {
   deviceInventory: HardwareDeviceInventory;
 }
 

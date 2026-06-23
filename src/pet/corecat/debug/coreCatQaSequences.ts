@@ -19,6 +19,8 @@ export const CORE_CAT_QA_SEQUENCES: Record<
     label: "All States",
     states: [
       "idle",
+      "scaredByMouse",
+      "eatingFish",
       "dataSorting",
       "memoryCrowded",
       "temperatureCheck",
@@ -46,7 +48,8 @@ export const CORE_CAT_QA_SEQUENCES: Record<
     label: "Hardware States",
     states: [
       "idle",
-      "dataSorting",
+      "scaredByMouse",
+      "eatingFish",
       "memoryCrowded",
       "temperatureCheck",
       "repairing",

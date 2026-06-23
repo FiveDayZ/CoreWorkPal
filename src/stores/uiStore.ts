@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { MainRoute } from "../routes";
+import type { MainRoute } from "../routeTypes";
 
 export interface UiStore {
   mainRoute: MainRoute;

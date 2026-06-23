@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { mainRoutes, type MainRoute } from "../../routes";
 import { formatParts } from "../../services/formatters";
 import {
@@ -131,7 +132,9 @@ export function MainWindow() {
           />
 
           <section className="cwp-main-content">
-            <CurrentPage />
+            <Suspense fallback={null}>
+              <CurrentPage />
+            </Suspense>
           </section>
         </div>
       </GlassPanel>

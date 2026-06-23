@@ -297,6 +297,14 @@ assert.equal(
   "pettingHearts",
 );
 assert.equal(
+  resolveCoreCatAnimationState(input({ debugStateOverride: "scaredByMouse" })),
+  "scaredByMouse",
+);
+assert.equal(
+  resolveCoreCatAnimationState(input({ debugStateOverride: "eatingFish" })),
+  "eatingFish",
+);
+assert.equal(
   resolveCoreCatAnimationState(
     input({
       catState: "TemperatureCheck",
@@ -932,7 +940,8 @@ assert.ok(getCoreCatQaSequence("all").states.includes("workshopUpgrade"));
 assert.ok(getCoreCatQaSequence("all").states.includes("moduleUpgrade"));
 assert.deepEqual(qaHardwareSequence.states, [
   "idle",
-  "dataSorting",
+  "scaredByMouse",
+  "eatingFish",
   "memoryCrowded",
   "temperatureCheck",
   "repairing",
@@ -1033,6 +1042,7 @@ function validateAnimationSpriteSheets() {
     "Click_Dizzy",
     "Dragging",
     "DropLanding",
+    "Eating_Fish",
     "ErrorGlitch",
     "Hover",
     "Idle",
@@ -1042,6 +1052,7 @@ function validateAnimationSpriteSheets() {
     "PanelOpen",
     "Petting_Hearts",
     "Repairing",
+    "Scared_By_Mouse",
     "Sleep_Low_Power",
     "Temperature_Check",
     "UpdateInstalling",

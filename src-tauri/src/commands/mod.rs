@@ -337,6 +337,7 @@ pub async fn save_window_position(
 
 #[tauri::command]
 pub async fn exit_app(app: AppHandle) -> Result<(), String> {
+    crate::IS_EXITING.store(true, std::sync::atomic::Ordering::SeqCst);
     app.exit(0);
     Ok(())
 }

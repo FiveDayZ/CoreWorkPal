@@ -36,6 +36,8 @@ export type CoreCatAnimationState =
   | "memoryCrowded"
   | "repairing"
   | "dataSorting"
+  | "scaredByMouse"
+  | "eatingFish"
   | "pettingHearts"
   | "sleep"
   | "celebrate"

@@ -12,36 +12,11 @@
   "app": {
     "windows": [
       {
-        "label": "main",
-        "title": "CoreWorkPal",
-        "url": "/main",
-        "width": 640,
-        "height": 420,
-        "decorations": false,
-        "resizable": false,
-        "visible": true,
-        "skipTaskbar": false
-      },
-      {
         "label": "pet",
         "title": "CoreCat",
         "url": "/pet",
         "width": 196,
         "height": 166,
-        "decorations": false,
-        "transparent": true,
-        "resizable": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "visible": true,
-        "shadow": false
-      },
-      {
-        "label": "monitor-bar",
-        "title": "CoreWorkPal Monitor",
-        "url": "/monitor-bar",
-        "width": 480,
-        "height": 42,
         "decorations": false,
         "transparent": true,
         "resizable": false,

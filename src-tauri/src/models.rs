@@ -27,6 +27,79 @@ pub struct HardwareSnapshot {
     pub device_inventory: HardwareDeviceInventory,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct HardwareMetricsSnapshot {
+    pub timestamp: i64,
+    pub cpu_usage_percent: Option<f32>,
+    pub gpu_usage_percent: Option<f32>,
+    pub memory_usage_percent: Option<f32>,
+    pub cpu_temperature_celsius: Option<f32>,
+    pub gpu_temperature_celsius: Option<f32>,
+    pub disk_read_bytes_per_second: Option<f32>,
+    pub disk_write_bytes_per_second: Option<f32>,
+    pub network_download_bytes_per_second: Option<f32>,
+    pub network_upload_bytes_per_second: Option<f32>,
+    pub cpu_name: Option<String>,
+    pub gpu_name: Option<String>,
+    pub gpu_memory_used_bytes: Option<u64>,
+    pub gpu_memory_total_bytes: Option<u64>,
+    pub total_memory_bytes: Option<u64>,
+    pub used_memory_bytes: Option<u64>,
+    pub cpu_physical_core_count: Option<u32>,
+    pub cpu_logical_core_count: Option<u32>,
+}
+
+impl Default for HardwareMetricsSnapshot {
+    fn default() -> Self {
+        Self {
+            timestamp: current_timestamp_ms(),
+            cpu_usage_percent: None,
+            gpu_usage_percent: None,
+            memory_usage_percent: None,
+            cpu_temperature_celsius: None,
+            gpu_temperature_celsius: None,
+            disk_read_bytes_per_second: None,
+            disk_write_bytes_per_second: None,
+            network_download_bytes_per_second: None,
+            network_upload_bytes_per_second: None,
+            cpu_name: None,
+            gpu_name: None,
+            gpu_memory_used_bytes: None,
+            gpu_memory_total_bytes: None,
+            total_memory_bytes: None,
+            used_memory_bytes: None,
+            cpu_physical_core_count: None,
+            cpu_logical_core_count: None,
+        }
+    }
+}
+
+impl From<&HardwareSnapshot> for HardwareMetricsSnapshot {
+    fn from(snapshot: &HardwareSnapshot) -> Self {
+        Self {
+            timestamp: snapshot.timestamp,
+            cpu_usage_percent: snapshot.cpu_usage_percent,
+            gpu_usage_percent: snapshot.gpu_usage_percent,
+            memory_usage_percent: snapshot.memory_usage_percent,
+            cpu_temperature_celsius: snapshot.cpu_temperature_celsius,
+            gpu_temperature_celsius: snapshot.gpu_temperature_celsius,
+            disk_read_bytes_per_second: snapshot.disk_read_bytes_per_second,
+            disk_write_bytes_per_second: snapshot.disk_write_bytes_per_second,
+            network_download_bytes_per_second: snapshot.network_download_bytes_per_second,
+            network_upload_bytes_per_second: snapshot.network_upload_bytes_per_second,
+            cpu_name: snapshot.cpu_name.clone(),
+            gpu_name: snapshot.gpu_name.clone(),
+            gpu_memory_used_bytes: snapshot.gpu_memory_used_bytes,
+            gpu_memory_total_bytes: snapshot.gpu_memory_total_bytes,
+            total_memory_bytes: snapshot.total_memory_bytes,
+            used_memory_bytes: snapshot.used_memory_bytes,
+            cpu_physical_core_count: snapshot.cpu_physical_core_count,
+            cpu_logical_core_count: snapshot.cpu_logical_core_count,
+        }
+    }
+}
+
 impl Default for HardwareSnapshot {
     fn default() -> Self {
         Self {
@@ -156,13 +229,15 @@ pub struct AppSettings {
     pub taskbar_monitor_mode: MonitorBarMode,
 }
 
+pub const APP_SETTINGS_SCHEMA_VERSION: u32 = 2;
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            schema_version: 1,
+            schema_version: APP_SETTINGS_SCHEMA_VERSION,
             launch_at_startup: false,
             is_cat_visible: true,
-            is_monitor_bar_visible: true,
+            is_monitor_bar_visible: false,
             enable_sleep_mode: true,
             enable_sound: false,
             enable_notifications: false,
@@ -170,7 +245,7 @@ impl Default for AppSettings {
             enable_low_power_mode: false,
             enable_static_cat_mode: false,
             enable_pet_bubble: true,
-            show_monitor_data_in_taskbar: true,
+            show_monitor_data_in_taskbar: false,
             sampling_interval_ms: 2000,
             background_sampling_interval_ms: 5000,
             data_sorting_cpu_threshold: 40.0,

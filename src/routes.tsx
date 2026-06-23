@@ -1,22 +1,67 @@
-import type React from "react";
-import { AboutPage } from "./pages/about/AboutPage";
-import { DashboardPage } from "./pages/dashboard/DashboardPage";
-import { DevicesPage } from "./pages/devices/DevicesPage";
-import { SettingsPage } from "./pages/settings/SettingsPage";
-import { WorkLogPage } from "./pages/work-log/WorkLogPage";
-import { WorkshopPage } from "./pages/workshop/WorkshopPage";
+import { lazy, type ComponentType, type LazyExoticComponent } from "react";
+import type { MainRoute } from "./routeTypes";
 
-export type MainRoute = "dashboard" | "workshop" | "devices" | "settings" | "workLog" | "about";
+export type { MainRoute } from "./routeTypes";
+
+type MainRouteComponent = ComponentType | LazyExoticComponent<ComponentType>;
 
 export const mainRoutes: Array<{
   key: MainRoute;
   label: string;
-  element: React.ComponentType;
+  element: MainRouteComponent;
 }> = [
-  { key: "dashboard", label: "Dashboard", element: DashboardPage },
-  { key: "devices", label: "Devices", element: DevicesPage },
-  { key: "workshop", label: "Workshop", element: WorkshopPage },
-  { key: "settings", label: "Settings", element: SettingsPage },
-  { key: "workLog", label: "Work Log", element: WorkLogPage },
-  { key: "about", label: "About", element: AboutPage },
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    element: lazy(() =>
+      import("./pages/dashboard/DashboardPage").then((module) => ({
+        default: module.DashboardPage,
+      })),
+    ),
+  },
+  {
+    key: "devices",
+    label: "Devices",
+    element: lazy(() =>
+      import("./pages/devices/DevicesPage").then((module) => ({
+        default: module.DevicesPage,
+      })),
+    ),
+  },
+  {
+    key: "workshop",
+    label: "Workshop",
+    element: lazy(() =>
+      import("./pages/workshop/WorkshopPage").then((module) => ({
+        default: module.WorkshopPage,
+      })),
+    ),
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    element: lazy(() =>
+      import("./pages/settings/SettingsPage").then((module) => ({
+        default: module.SettingsPage,
+      })),
+    ),
+  },
+  {
+    key: "workLog",
+    label: "Work Log",
+    element: lazy(() =>
+      import("./pages/work-log/WorkLogPage").then((module) => ({
+        default: module.WorkLogPage,
+      })),
+    ),
+  },
+  {
+    key: "about",
+    label: "About",
+    element: lazy(() =>
+      import("./pages/about/AboutPage").then((module) => ({
+        default: module.AboutPage,
+      })),
+    ),
+  },
 ];
