@@ -2,11 +2,12 @@ node_modules/
 dist/
 src-tauri/target/
 src-tauri/target-sandbox/
-cargo-target-sandbox/
+Cargo-target-sandbox/
 .corepack/
 .pnpm-store/
 .toolchains/
 *.tmp
+*.rar
 tauri-dev*.log
 *-check*.png
 final-*.png
