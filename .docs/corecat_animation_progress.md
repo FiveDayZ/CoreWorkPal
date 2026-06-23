@@ -139,5 +139,14 @@
 - [x] 设置主页左侧头像区拓展：重构 `SettingsPage.tsx` 左侧大型头像详情卡片，在头像 wrapper 正下方居中增加带有暗底、细边框及醒目布丁橙强化的像素风 `ID: XXXXXXXXXX` 看板，符合复古工坊界面审美。
 - [x] 类型安全与测试覆盖：新增了 `test_uuid_cat_id_conversion` 单元测试，专门验证算法的确定性（相同输入相同输出）、格式规范（10位字母数字）及输入容错性（过滤首尾空格），测试、tsc 与 Vite 静态打包全绿。
 
+## 已完成任务 (窗口控制按钮文字居中显示优化部分)
+
+- [x] **窗口控制按钮文字与图标居中对齐优化**：
+  - 定位问题：原 Unicode 文本字符（如 `─` 和 `×`）在不同字体和系统下存在基线偏移，导致传统 flex 居中后在视觉上依然偏置偏下。
+  - 重构为矢量图标：将 `MainWindow.tsx` 中的 Minimize 与 Close 按钮由 Unicode 字符替换为 `PixelIcon` 自适应组件（分别对应 `minimize` 与 `close` 图标）。
+  - 像素图标网格坐标重绘：对 `PixelIcon.tsx` 中的 `minimize`、`restore` 与 `close` 的 16x16 像素图案网格进行重新计算与平移微调，修正其在 bounding box 内部偏置不均的缺陷，使其实现完美的横向与纵向绝对居中。
+  - 样式重构与构建验证：在 `core-ui.css` 中将窗口行为按钮的 `display` 由 `grid` 变更为 `inline-flex` 结合 `align-items: center`、`justify-content: center` 与 `line-height: 1`。经本地 `npm run build` 构建及浏览器子代视觉验证，所有窗口按钮图标在默认和悬停状态下均完美居中显示，精致饱满。
+- [x] **代码推送与同步**：已将所有居中调整代码同步提交并推送至 GitHub `main` 分支。
+
 ## 可执行文件位置
 `src-tauri/target/release/core-work-pal.exe`
