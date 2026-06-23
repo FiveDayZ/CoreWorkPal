@@ -27,6 +27,7 @@
 - [x] 在 [tauriCommands.ts](file:///c:/My/Workplace/Coding/CoreWorkPal/src/services/tauriCommands.ts) 中导出对应 Rust 核心 of 接口调用封装，并支持浏览器环境下的高保真 Mock 响应。
 - [x] 在 [AboutPage.tsx](file:///c:/My/Workplace/Coding/CoreWorkPal/src/pages/about/AboutPage.tsx) 界面中嵌入像素风格【检查更新】按钮及当前版本号状态展示。
 - [x] 创建 [UpdateModal.tsx](file:///c:/My/Workplace/Coding/CoreWorkPal/src/components/UpdateModal.tsx) 磨砂玻璃风格更新进度弹窗，支持进度条显示、更新日志展示、PAT 鉴权配置和失败重试等。
+- [x] **新增**：在检查与下载更新的全程中，完美绑定并触发 CoreCat 专属的 **`updateInstalling`** 实时动画，并在弹窗关闭或取消后优雅还原为 `idle` 闲置状态。
 
 ### 阶段四：打包发布与验证测试
 - [x] 运行 TypeScript 类型静态检查 `npm run typecheck`，**全量检查通过**。
