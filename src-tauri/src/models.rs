@@ -227,6 +227,7 @@ pub struct AppSettings {
     pub monitor_bar_mode: MonitorBarMode,
     pub visible_taskbar_metrics: Vec<MonitorMetric>,
     pub taskbar_monitor_mode: MonitorBarMode,
+    pub cat_id: String,
 }
 
 pub const APP_SETTINGS_SCHEMA_VERSION: u32 = 2;
@@ -274,6 +275,7 @@ impl Default for AppSettings {
                 MonitorMetric::Network,
             ],
             taskbar_monitor_mode: MonitorBarMode::Default,
+            cat_id: String::new(),
         }
     }
 }
@@ -310,6 +312,7 @@ pub struct AppSettingsPatch {
     pub monitor_bar_mode: Option<MonitorBarMode>,
     pub visible_taskbar_metrics: Option<Vec<MonitorMetric>>,
     pub taskbar_monitor_mode: Option<MonitorBarMode>,
+    pub cat_id: Option<String>,
 }
 
 impl AppSettings {
@@ -401,8 +404,12 @@ impl AppSettings {
         if let Some(value) = patch.taskbar_monitor_mode {
             self.taskbar_monitor_mode = value;
         }
+        if let Some(value) = patch.cat_id {
+            self.cat_id = value;
+        }
     }
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]

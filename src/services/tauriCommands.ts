@@ -42,6 +42,7 @@ const browserSettings: AppSettings = {
   monitorBarMode: "Default",
   visibleTaskbarMetrics: ["Cpu", "Ram", "Gpu", "Network"],
   taskbarMonitorMode: "Default",
+  catId: "DEV_CAT_ID",
 };
 
 const browserWorkshop: WorkshopState = {

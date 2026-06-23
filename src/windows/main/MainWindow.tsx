@@ -11,6 +11,7 @@ import {
 } from "../../services/windowApi";
 import { useUiStore } from "../../stores/uiStore";
 import { useWorkshopStore } from "../../stores/workshopStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 import {
   GlassPanel,
   Sidebar,
@@ -32,6 +33,7 @@ export function MainWindow() {
   const route = useUiStore((state) => state.mainRoute);
   const setRoute = useUiStore((state) => state.setMainRoute);
   const workshop = useWorkshopStore((state) => state.state);
+  const settings = useSettingsStore((state) => state.settings);
   const routeConfig = mainRoutes.find((item) => item.key === route);
   const CurrentPage = routeConfig?.element ?? mainRoutes[0].element;
 
@@ -104,16 +106,35 @@ export function MainWindow() {
         <div className="cwp-window-body">
           <Sidebar
             footer={
-              <div className="cwp-sidebar-status-card">
-                <PetAvatar />
-                <div className="cwp-sidebar-status-info">
-                  <span className="cwp-sidebar-status-name">
-                    CoreCat
-                  </span>
-                  <span className="cwp-sidebar-status-online">
-                    ● 陪伴中
-                  </span>
+              <div className="cwp-sidebar-status-card" style={{ flexDirection: "column", alignItems: "stretch", gap: "4px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <PetAvatar />
+                  <div className="cwp-sidebar-status-info">
+                    <span className="cwp-sidebar-status-name">
+                      CoreCat
+                    </span>
+                    <span className="cwp-sidebar-status-online">
+                      ● 陪伴中
+                    </span>
+                  </div>
                 </div>
+                {settings?.catId && (
+                  <div
+                    style={{
+                      fontFamily: "var(--font-pixel-title)",
+                      fontSize: "8px",
+                      color: "var(--color-text-muted)",
+                      textAlign: "center",
+                      borderTop: "1px dashed var(--color-border-soft)",
+                      paddingTop: "2px",
+                      letterSpacing: "0.5px",
+                      userSelect: "text",
+                    }}
+                    title="您的宠物唯一识别码 CatID"
+                  >
+                    ID: {settings.catId}
+                  </div>
+                )}
               </div>
             }
             items={mainRoutes.map((item) => ({

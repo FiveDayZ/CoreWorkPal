@@ -32,6 +32,7 @@ export interface AppSettings {
   monitorBarMode: MonitorBarMode;
   visibleTaskbarMetrics: MonitorMetric[];
   taskbarMonitorMode: MonitorBarMode;
+  catId: string;
 }
 
 export type AppSettingsPatch = Partial<AppSettings>;

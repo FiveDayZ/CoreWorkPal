@@ -123,18 +123,44 @@ impl StorageService {
     }
 }
 
+fn generate_random_cat_id() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let seed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(1234567890);
+
+    let mut state = seed as u64;
+    let chars: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let mut result = String::with_capacity(10);
+
+    for _ in 0..10 {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        let idx = (state % chars.len() as u64) as usize;
+        result.push(chars[idx] as char);
+    }
+    result
+}
+
 fn migrate_settings(settings: &mut AppSettings) -> bool {
-    if settings.schema_version >= APP_SETTINGS_SCHEMA_VERSION {
-        return false;
+    let mut changed = false;
+    if settings.schema_version < APP_SETTINGS_SCHEMA_VERSION {
+        if settings.schema_version < 2 {
+            settings.is_monitor_bar_visible = false;
+            settings.show_monitor_data_in_taskbar = false;
+        }
+        settings.schema_version = APP_SETTINGS_SCHEMA_VERSION;
+        changed = true;
     }
 
-    if settings.schema_version < 2 {
-        settings.is_monitor_bar_visible = false;
-        settings.show_monitor_data_in_taskbar = false;
+    if settings.cat_id.is_empty() {
+        settings.cat_id = generate_random_cat_id();
+        changed = true;
     }
 
-    settings.schema_version = APP_SETTINGS_SCHEMA_VERSION;
-    true
+    changed
 }
 
 fn app_data_root() -> PathBuf {
@@ -173,6 +199,13 @@ mod tests {
         assert_eq!(settings.schema_version, APP_SETTINGS_SCHEMA_VERSION);
         assert!(!settings.is_monitor_bar_visible);
         assert!(!settings.show_monitor_data_in_taskbar);
+        assert_eq!(settings.cat_id.len(), 10);
+        assert!(settings.cat_id.chars().all(|c| c.is_ascii_alphanumeric()));
+
+        // Verify persistence: loading settings again should return the exact same cat_id
+        let settings_again = storage.load_or_create_settings().unwrap();
+        assert_eq!(settings_again.cat_id, settings.cat_id);
+
         assert_eq!(workshop.schema_version, 1);
         assert_eq!(layout.schema_version, 1);
         assert_eq!(work_logs.schema_version, 1);
