@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { mainRoutes, type MainRoute } from "../../routes";
 import { formatParts } from "../../services/formatters";
 import {
@@ -7,6 +7,8 @@ import {
 import {
   startDraggingCurrentWindow,
   minimizeMainWindow,
+  isMainWindowZoomed,
+  toggleMainWindowZoom,
   closeMainWindow,
 } from "../../services/windowApi";
 import { useUiStore } from "../../stores/uiStore";
@@ -34,11 +36,20 @@ export function MainWindow() {
   const setRoute = useUiStore((state) => state.setMainRoute);
   const workshop = useWorkshopStore((state) => state.state);
   const settings = useSettingsStore((state) => state.settings);
+  const [mainWindowZoomed, setMainWindowZoomed] = useState(isMainWindowZoomed);
   const routeConfig = mainRoutes.find((item) => item.key === route);
   const CurrentPage = routeConfig?.element ?? mainRoutes[0].element;
 
+  async function handleMainWindowZoomToggle() {
+    try {
+      setMainWindowZoomed(await toggleMainWindowZoom());
+    } catch (error) {
+      console.error("Failed to toggle main window zoom", error);
+    }
+  }
+
   return (
-    <main className="cwp-main-root">
+    <main className={`cwp-main-root${mainWindowZoomed ? " is-window-zoomed" : ""}`}>
       <GlassPanel className="cwp-main-shell">
         <TitleBar
           actions={
@@ -51,6 +62,15 @@ export function MainWindow() {
                 title="最小化"
               >
                 <PixelIcon name="minimize" size={10} />
+              </button>
+              <button
+                aria-label={mainWindowZoomed ? "Restore Window Size" : "Double Window Size"}
+                className="cwp-window-action"
+                onClick={() => void handleMainWindowZoomToggle()}
+                type="button"
+                title={mainWindowZoomed ? "还原窗口尺寸" : "窗口放大 2 倍"}
+              >
+                <PixelIcon name={mainWindowZoomed ? "windowShrink" : "windowExpand"} size={10} />
               </button>
               <button
                 aria-label="Toggle Panel"

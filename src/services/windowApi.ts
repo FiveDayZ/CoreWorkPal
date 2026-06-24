@@ -1,9 +1,15 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import {
   showMainWindow,
   showPetPanel,
   togglePetPanel,
 } from "./tauriCommands";
+
+const MAIN_WINDOW_BASE_WIDTH = 640;
+const MAIN_WINDOW_BASE_HEIGHT = 420;
+const MAIN_WINDOW_ZOOM_SCALE = 2;
+
+let mainWindowZoomed = false;
 
 function isTauriRuntime() {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -34,6 +40,27 @@ export async function minimizeMainWindow(): Promise<void> {
     return;
   }
   await getCurrentWindow().minimize();
+}
+
+export function isMainWindowZoomed(): boolean {
+  return mainWindowZoomed;
+}
+
+export async function toggleMainWindowZoom(): Promise<boolean> {
+  const nextZoomed = !mainWindowZoomed;
+  const scale = nextZoomed ? MAIN_WINDOW_ZOOM_SCALE : 1;
+
+  if (isTauriRuntime()) {
+    await getCurrentWindow().setSize(
+      new LogicalSize(
+        MAIN_WINDOW_BASE_WIDTH * scale,
+        MAIN_WINDOW_BASE_HEIGHT * scale,
+      ),
+    );
+  }
+
+  mainWindowZoomed = nextZoomed;
+  return mainWindowZoomed;
 }
 
 export async function closeMainWindow(): Promise<void> {

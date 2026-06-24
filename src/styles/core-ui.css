@@ -163,6 +163,7 @@ label {
 }
 
 .cwp-main-root {
+  --main-window-scale: 1;
   width: 100vw;
   height: 100vh;
   background-color: #050b14;
@@ -174,6 +175,10 @@ label {
   place-items: center;
   padding: 0;
   overflow: hidden;
+}
+
+.cwp-main-root.is-window-zoomed {
+  --main-window-scale: 2;
 }
 
 .cwp-glass-panel {
@@ -1425,6 +1430,14 @@ label {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transform-origin: center;
+  zoom: var(--main-window-scale);
+}
+
+@supports not (zoom: 2) {
+  .cwp-main-shell {
+    transform: scale(var(--main-window-scale));
+  }
 }
 
 .cwp-titlebar {
@@ -4184,4 +4197,19 @@ input[type="range"]::-moz-range-thumb,
   border: 2px solid;
   border-color: rgba(255, 255, 255, 0.3) var(--color-bg-950) var(--color-bg-950) rgba(255, 255, 255, 0.3);
   cursor: pointer;
+}
+
+/* ==========================================================================
+   Responsive Titlebar Zoom Styles
+   ========================================================================== */
+
+/* Ensure left content (avatar + title + version), center status box, and stats are always visible on the main window titlebar */
+.cwp-main-root .cwp-titlebar-left,
+.cwp-main-root .cwp-titlebar-center,
+.cwp-main-root .cwp-titlebar-stats {
+  display: flex !important;
+}
+
+.cwp-main-root .cwp-titlebar {
+  grid-template-columns: minmax(110px, 1fr) auto minmax(180px, 1fr) !important;
 }
