@@ -1,4 +1,5 @@
 mod app_state;
+pub mod achievements;
 mod commands;
 mod input_activity;
 mod models;
@@ -19,13 +20,52 @@ pub static IS_EXITING: std::sync::atomic::AtomicBool = std::sync::atomic::Atomic
 
 pub fn run() {
     #[cfg(debug_assertions)]
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
 
     tauri::Builder::default()
         .setup(|app| {
             let state = AppState::load().map_err(std::io::Error::other)?;
             app.manage(state);
             tray::setup_tray(app)?;
+            let corruption_rebuilds = app
+                .state::<AppState>()
+                .storage
+                .take_corruption_rebuilds();
+            let launch_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                for (index, file_name) in corruption_rebuilds.into_iter().enumerate() {
+                    let now = models::current_timestamp_ms();
+                    if let Err(error) = commands::record_internal_achievement_event(
+                        &launch_handle,
+                        "storage.corruption_rebuilt",
+                        format!("storage.corruption_rebuilt:{file_name}:{now}:{index}"),
+                        serde_json::json!({
+                            "fileName": file_name,
+                        }),
+                    )
+                    .await
+                    {
+                        tracing::warn!(
+                            "failed to record storage.corruption_rebuilt achievement event: {error}"
+                        );
+                    }
+                }
+                let now = models::current_timestamp_ms();
+                if let Err(error) = commands::record_internal_achievement_event(
+                    &launch_handle,
+                    "app.launch",
+                    format!("app.launch:{now}"),
+                    serde_json::json!({
+                        "appVersion": env!("CARGO_PKG_VERSION"),
+                    }),
+                )
+                .await
+                {
+                    tracing::warn!("failed to record app.launch achievement event: {error}");
+                }
+            });
             start_hardware_snapshot_pump(app.handle().clone());
             start_input_activity_pump(app.handle().clone());
             let app_handle = app.handle().clone();
@@ -41,6 +81,11 @@ pub fn run() {
         })
         .on_window_event(window_manager::handle_window_event)
         .invoke_handler(tauri::generate_handler![
+            commands::track_achievement_event,
+            commands::get_achievement_summary,
+            commands::list_achievements,
+            commands::get_achievement_detail,
+            commands::mark_achievement_notifications_seen,
             commands::get_hardware_snapshot,
             commands::get_app_settings,
             commands::update_app_settings,

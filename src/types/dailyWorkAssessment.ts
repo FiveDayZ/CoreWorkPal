@@ -12,6 +12,12 @@ export type WorkDayType =
 
 export type InsightSeverity = "positive" | "neutral" | "warning";
 
+export type CoreCatCommentTone =
+  | "encouragement"
+  | "tease"
+  | "warning"
+  | "celebration";
+
 export type WorkTimelineSegmentKind =
   | "idleCompanion"
   | "steadyProgress"
@@ -61,13 +67,38 @@ export interface AssessmentInsight {
   metricValue?: string | null;
 }
 
+export interface WorkCardRarity {
+  tier: "C" | "B" | "A" | "S" | "SS" | string;
+  label: string;
+  score: number;
+  reason: string;
+}
+
+export interface WorkDayTitle {
+  family: string;
+  title: string;
+  level: number;
+  progress: number;
+  nextLevelAt?: number | null;
+}
+
+export interface CoreCatCommentary {
+  tone: CoreCatCommentTone;
+  title: string;
+  body: string;
+}
+
 export interface DailyWorkAssessment {
   date: string;
   dayType: WorkDayType;
   dayTypeTitle: string;
+  rarity: WorkCardRarity;
+  title: WorkDayTitle;
+  corecatCommentary: CoreCatCommentary;
   workprint: WorkprintSummary;
   baseline: BaselineComparison;
   timeline: WorkTimelineSegment[];
+  mvpSegments: WorkTimelineSegment[];
   highlights: AssessmentInsight[];
   risks: AssessmentInsight[];
   suggestions: AssessmentInsight[];
@@ -81,6 +112,9 @@ export interface DailyWorkAssessmentSummary {
   date: string;
   dayType: WorkDayType;
   dayTypeTitle: string;
+  rarity: WorkCardRarity;
+  title: WorkDayTitle;
+  workprint: WorkprintSummary;
   score: number;
   corecatSummary: string;
   badgeIds: string[];

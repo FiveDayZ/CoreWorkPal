@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use chrono::{Local, TimeZone};
+use chrono::{Duration, Local, NaiveDate, TimeZone};
 use serde::{Deserialize, Serialize};
 
 const WORK_LOG_TIME_SLICE_MS: i64 = 15 * 60 * 1000;
@@ -812,9 +812,13 @@ pub struct DailyWorkAssessment {
     pub date: String,
     pub day_type: WorkDayType,
     pub day_type_title: String,
+    pub rarity: WorkCardRarity,
+    pub title: WorkDayTitle,
+    pub corecat_commentary: CoreCatCommentary,
     pub workprint: WorkprintSummary,
     pub baseline: BaselineComparison,
     pub timeline: Vec<WorkTimelineSegment>,
+    pub mvp_segments: Vec<WorkTimelineSegment>,
     pub highlights: Vec<AssessmentInsight>,
     pub risks: Vec<AssessmentInsight>,
     pub suggestions: Vec<AssessmentInsight>,
@@ -830,6 +834,9 @@ pub struct DailyWorkAssessmentSummary {
     pub date: String,
     pub day_type: WorkDayType,
     pub day_type_title: String,
+    pub rarity: WorkCardRarity,
+    pub title: WorkDayTitle,
+    pub workprint: WorkprintSummary,
     pub score: u32,
     pub corecat_summary: String,
     pub badge_ids: Vec<String>,
@@ -852,6 +859,42 @@ pub struct DailyWorkAssessmentTrend {
     pub score_delta: i32,
     pub summary: String,
     pub insights: Vec<AssessmentInsight>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkCardRarity {
+    pub tier: String,
+    pub label: String,
+    pub score: u32,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkDayTitle {
+    pub family: String,
+    pub title: String,
+    pub level: u32,
+    pub progress: u32,
+    pub next_level_at: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CoreCatCommentary {
+    pub tone: CoreCatCommentTone,
+    pub title: String,
+    pub body: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum CoreCatCommentTone {
+    Encouragement,
+    Tease,
+    Warning,
+    Celebration,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -1089,6 +1132,11 @@ impl DailyWorkAssessment {
         let baseline = build_baseline_comparison(&features, history);
         let workprint = build_workprint(day_type, &features);
         let timeline = build_work_timeline(&entry);
+        let mvp_segments = build_mvp_segments(&timeline);
+        let rarity = build_work_card_rarity(report.total_score, &features, history, &entry.date);
+        let title = build_work_day_title(day_type, history);
+        let corecat_commentary =
+            build_corecat_commentary(day_type, &features, report.total_score, &rarity, &title);
         let (highlights, risks, suggestions) =
             build_assessment_insights(&features, &baseline, day_type);
 
@@ -1096,9 +1144,13 @@ impl DailyWorkAssessment {
             date: entry.date,
             day_type,
             day_type_title: work_day_type_title(day_type).to_string(),
+            rarity,
+            title,
+            corecat_commentary,
             workprint,
             baseline,
             timeline,
+            mvp_segments,
             highlights,
             risks,
             suggestions,
@@ -1114,6 +1166,9 @@ impl DailyWorkAssessment {
             date: self.date.clone(),
             day_type: self.day_type,
             day_type_title: self.day_type_title.clone(),
+            rarity: self.rarity.clone(),
+            title: self.title.clone(),
+            workprint: self.workprint.clone(),
             score: self.score,
             corecat_summary: self.corecat_summary.clone(),
             badge_ids: self.badge_ids.clone(),
@@ -1323,6 +1378,7 @@ fn build_baseline_comparison(
 ) -> BaselineComparison {
     let history_features: Vec<WorkLogFeatures> = history
         .iter()
+        .take(7)
         .map(WorkLogFeatures::from_entry)
         .filter(|item| item.sample_count > 0 && item.active_seconds > 0)
         .collect();
@@ -1455,6 +1511,271 @@ fn build_work_timeline(entry: &WorkLogEntry) -> Vec<WorkTimelineSegment> {
     }
 
     segments
+}
+
+fn build_mvp_segments(timeline: &[WorkTimelineSegment]) -> Vec<WorkTimelineSegment> {
+    let mut candidates = timeline
+        .iter()
+        .filter(|segment| segment.kind != WorkTimelineSegmentKind::IdleCompanion)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    candidates.sort_by(|left, right| {
+        right
+            .intensity
+            .partial_cmp(&left.intensity)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    candidates.truncate(3);
+    candidates.sort_by(|left, right| left.start_time.cmp(&right.start_time));
+
+    candidates
+}
+
+fn build_work_card_rarity(
+    score: u32,
+    features: &WorkLogFeatures,
+    history: &[WorkLogEntry],
+    date: &str,
+) -> WorkCardRarity {
+    let active_streak_days = active_streak_days(date, features, history);
+    let load_index =
+        (features.average_load() * 0.65 + features.high_load_ratio * 100.0 * 0.35).clamp(0.0, 100.0);
+    let stability_index = (100.0
+        - features.thermal_avg * 0.55
+        - features.thermal_warning_ratio() * 160.0
+        - features.memory_over_70_ratio * 45.0)
+        .clamp(0.0, 100.0);
+    let rarity_score = (score as f64 * 0.50
+        + (active_streak_days.min(7) as f64 / 7.0) * 18.0
+        + (load_index / 100.0) * 17.0
+        + (stability_index / 100.0) * 15.0)
+        .round()
+        .clamp(0.0, 100.0) as u32;
+    let tier = if rarity_score >= 85 {
+        "SS"
+    } else if rarity_score >= 72 {
+        "S"
+    } else if rarity_score >= 58 {
+        "A"
+    } else if rarity_score >= 40 {
+        "B"
+    } else {
+        "C"
+    };
+
+    WorkCardRarity {
+        tier: tier.to_string(),
+        label: format!("{tier} 级工况卡"),
+        score: rarity_score,
+        reason: format!(
+            "画像分 {score}，连续活跃 {active_streak_days} 天，负载指数 {:.0}，稳定指数 {:.0}",
+            load_index, stability_index
+        ),
+    }
+}
+
+fn active_streak_days(date: &str, features: &WorkLogFeatures, history: &[WorkLogEntry]) -> u32 {
+    if !features_has_signal(features) {
+        return 0;
+    }
+
+    let Ok(mut expected_date) = NaiveDate::parse_from_str(date, "%Y-%m-%d")
+        .map(|date| date - Duration::days(1))
+    else {
+        return 1;
+    };
+    let mut streak = 1;
+
+    for entry in history {
+        let Ok(entry_date) = NaiveDate::parse_from_str(&entry.date, "%Y-%m-%d") else {
+            continue;
+        };
+        if entry_date > expected_date {
+            continue;
+        }
+        if entry_date < expected_date {
+            break;
+        }
+
+        let entry_features = WorkLogFeatures::from_entry(entry);
+        if features_has_signal(&entry_features) {
+            streak += 1;
+            expected_date -= Duration::days(1);
+        } else {
+            break;
+        }
+    }
+
+    streak
+}
+
+fn features_has_signal(features: &WorkLogFeatures) -> bool {
+    features.sample_count > 0 || features.active_seconds > 0 || features.input_total > 0
+}
+
+fn build_work_day_title(day_type: WorkDayType, history: &[WorkLogEntry]) -> WorkDayTitle {
+    let progress = 1
+        + history
+            .iter()
+            .filter(|entry| resolve_work_day_type(&WorkLogFeatures::from_entry(entry)) == day_type)
+            .count() as u32;
+    let thresholds = [1_u32, 3, 7, 14, 30];
+    let level = thresholds
+        .iter()
+        .filter(|threshold| progress >= **threshold)
+        .count()
+        .max(1) as u32;
+    let next_level_at = thresholds
+        .iter()
+        .copied()
+        .find(|threshold| *threshold > progress);
+    let titles = work_day_title_pool(day_type);
+    let title = titles[(level.saturating_sub(1) as usize).min(titles.len() - 1)];
+
+    WorkDayTitle {
+        family: work_day_title_family(day_type).to_string(),
+        title: title.to_string(),
+        level,
+        progress,
+        next_level_at,
+    }
+}
+
+fn work_day_title_family(day_type: WorkDayType) -> &'static str {
+    match day_type {
+        WorkDayType::DeepFocus => "focus",
+        WorkDayType::BuildBurst => "build",
+        WorkDayType::ArchiveFlow => "archive",
+        WorkDayType::PressureRepair => "pressure",
+        WorkDayType::StableMaintenance => "steady",
+        WorkDayType::FragmentedSwitching => "switch",
+        WorkDayType::LowLoadCompanion => "quiet",
+        WorkDayType::Unknown => "observe",
+    }
+}
+
+fn work_day_title_pool(day_type: WorkDayType) -> [&'static str; 5] {
+    match day_type {
+        WorkDayType::DeepFocus => [
+            "专注学徒",
+            "深潜构筑师",
+            "静流策士",
+            "沉浸工程师",
+            "深海领航员",
+        ],
+        WorkDayType::BuildBurst => [
+            "火力装配员",
+            "风暴构筑师",
+            "熔炉调度官",
+            "构建指挥官",
+            "星火锻造师",
+        ],
+        WorkDayType::ArchiveFlow => [
+            "资料整理员",
+            "风暴归档者",
+            "流转档案师",
+            "数据航道长",
+            "星库典藏师",
+        ],
+        WorkDayType::PressureRepair => [
+            "压力观察员",
+            "高压修复师",
+            "热浪调停者",
+            "故障压制官",
+            "临界守望者",
+        ],
+        WorkDayType::StableMaintenance => [
+            "平稳守护者",
+            "冷静维护员",
+            "秩序巡检员",
+            "静态运维官",
+            "长线守护者",
+        ],
+        WorkDayType::FragmentedSwitching => [
+            "多线记录员",
+            "切换游侠",
+            "碎片调度师",
+            "多任务编排官",
+            "闪转指挥家",
+        ],
+        WorkDayType::LowLoadCompanion => [
+            "安静陪伴员",
+            "轻载看护者",
+            "低频巡游者",
+            "静默整理师",
+            "休整守门人",
+        ],
+        WorkDayType::Unknown => [
+            "观察记录员",
+            "数据收集员",
+            "初始观测者",
+            "样本整理师",
+            "未知星图员",
+        ],
+    }
+}
+
+fn build_corecat_commentary(
+    day_type: WorkDayType,
+    features: &WorkLogFeatures,
+    score: u32,
+    rarity: &WorkCardRarity,
+    title: &WorkDayTitle,
+) -> CoreCatCommentary {
+    let tone = if features.thermal_warning_ratio() >= 0.03 || day_type == WorkDayType::PressureRepair
+    {
+        CoreCatCommentTone::Warning
+    } else if score >= 82 || rarity.tier == "SS" || rarity.tier == "S" {
+        CoreCatCommentTone::Celebration
+    } else if day_type == WorkDayType::Unknown || features.active_seconds < 900 {
+        CoreCatCommentTone::Tease
+    } else {
+        CoreCatCommentTone::Encouragement
+    };
+
+    let (comment_title, body) = match tone {
+        CoreCatCommentTone::Celebration => (
+            "CoreCat 战报：这张卡有收藏价值",
+            format!(
+                "喵，今天的{}拿到 {}，{} 已经升到 Lv.{}。这类节奏可以收进你的工况图鉴里。",
+                work_day_type_title(day_type),
+                rarity.label,
+                title.title,
+                title.level
+            ),
+        ),
+        CoreCatCommentTone::Warning => (
+            "CoreCat 警报：机器有点烫爪",
+            format!(
+                "今天压力信号偏高，热压力约 {:.0}%，内存高占用片段也值得留意。CoreCat 建议下次高负载前先给机器留点余量。",
+                features.thermal_avg
+            ),
+        ),
+        CoreCatCommentTone::Tease => (
+            "CoreCat 吐槽：这张卡还在孵化",
+            format!(
+                "今天样本还不够厚，CoreCat 只抓到 {} 的轮廓。再多陪伴一会儿，明天的卡面会更像样。",
+                title.title
+            ),
+        ),
+        CoreCatCommentTone::Encouragement => (
+            "CoreCat 点评：节奏已经成型",
+            format!(
+                "今天的{}比较清楚，负载 {:.0}、输入节奏 {:.0}/h。CoreCat 已经把它整理成 {}。",
+                work_day_type_title(day_type),
+                features.average_load(),
+                features.input_per_hour(),
+                rarity.label
+            ),
+        ),
+    };
+
+    CoreCatCommentary {
+        tone,
+        title: comment_title.to_string(),
+        body,
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -2226,6 +2547,40 @@ pub fn current_timestamp_ms() -> i64 {
 mod assessment_tests {
     use super::*;
 
+    fn test_rarity(tier: &str) -> WorkCardRarity {
+        WorkCardRarity {
+            tier: tier.to_string(),
+            label: format!("{tier} 级工况卡"),
+            score: 60,
+            reason: "test".to_string(),
+        }
+    }
+
+    fn test_title(title: &str) -> WorkDayTitle {
+        WorkDayTitle {
+            family: "test".to_string(),
+            title: title.to_string(),
+            level: 1,
+            progress: 1,
+            next_level_at: Some(3),
+        }
+    }
+
+    fn test_workprint() -> WorkprintSummary {
+        WorkprintSummary {
+            label: "测试指纹".to_string(),
+            description: "test".to_string(),
+            pixel_grid: vec![0; 64],
+            width: 8,
+            height: 8,
+            load_shape: 0.0,
+            input_rhythm: 0.0,
+            io_intensity: 0.0,
+            thermal_pressure: 0.0,
+            continuity: 0.0,
+        }
+    }
+
     #[test]
     fn daily_assessment_handles_empty_day() {
         let entry = WorkLogEntry {
@@ -2398,6 +2753,9 @@ mod assessment_tests {
                 date: "2026-06-23".to_string(),
                 day_type: WorkDayType::BuildBurst,
                 day_type_title: "编译构建日".to_string(),
+                rarity: test_rarity("S"),
+                title: test_title("风暴构筑师"),
+                workprint: test_workprint(),
                 score: 78,
                 corecat_summary: String::new(),
                 badge_ids: vec!["BUILD".to_string()],
@@ -2408,6 +2766,9 @@ mod assessment_tests {
                 date: "2026-06-22".to_string(),
                 day_type: WorkDayType::DeepFocus,
                 day_type_title: "深度专注日".to_string(),
+                rarity: test_rarity("S"),
+                title: test_title("深潜构筑师"),
+                workprint: test_workprint(),
                 score: 86,
                 corecat_summary: String::new(),
                 badge_ids: vec!["FOCUS".to_string()],
@@ -2418,6 +2779,9 @@ mod assessment_tests {
                 date: "2026-06-21".to_string(),
                 day_type: WorkDayType::BuildBurst,
                 day_type_title: "编译构建日".to_string(),
+                rarity: test_rarity("A"),
+                title: test_title("火力装配员"),
+                workprint: test_workprint(),
                 score: 60,
                 corecat_summary: String::new(),
                 badge_ids: vec!["BUILD".to_string()],

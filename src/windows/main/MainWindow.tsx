@@ -1,8 +1,10 @@
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { AchievementUnlockToast } from "../../components/AchievementUnlockToast";
 import { mainRoutes, type MainRoute } from "../../routes";
 import { formatParts } from "../../services/formatters";
 import {
   showPetPanel,
+  trackAchievementEvent,
 } from "../../services/tauriCommands";
 import {
   startDraggingCurrentWindow,
@@ -14,6 +16,7 @@ import {
 import { useUiStore } from "../../stores/uiStore";
 import { useWorkshopStore } from "../../stores/workshopStore";
 import { useSettingsStore } from "../../stores/settingsStore";
+import { useAchievementStore } from "../../stores/achievementStore";
 import {
   GlassPanel,
   Sidebar,
@@ -28,6 +31,7 @@ const routeLabels: Record<MainRoute, { icon: PixelIconName; text: string }> = {
   workshop: { icon: "tools", text: "工坊" },
   settings: { icon: "settings", text: "设置" },
   workLog: { icon: "log", text: "日报" },
+  achievements: { icon: "achievement", text: "成就" },
   about: { icon: "info", text: "关于" },
 };
 
@@ -36,9 +40,31 @@ export function MainWindow() {
   const setRoute = useUiStore((state) => state.setMainRoute);
   const workshop = useWorkshopStore((state) => state.state);
   const settings = useSettingsStore((state) => state.settings);
+  const achievementSummary = useAchievementStore((state) => state.summary);
+  const pendingAchievementUnlockCount = useAchievementStore(
+    (state) => state.unlockQueue.length,
+  );
   const [mainWindowZoomed, setMainWindowZoomed] = useState(isMainWindowZoomed);
   const routeConfig = mainRoutes.find((item) => item.key === route);
   const CurrentPage = routeConfig?.element ?? mainRoutes[0].element;
+  const achievementUnlockedCount = achievementSummary?.unlockedCount ?? 0;
+  const unreadAchievementCount = Math.max(
+    achievementSummary?.pendingNotificationCount ?? 0,
+    pendingAchievementUnlockCount,
+  );
+
+  useEffect(() => {
+    const pageKey = route === "workLog" ? "worklog" : route;
+    void trackAchievementEvent({
+      eventName: "page.view",
+      occurredAt: Date.now(),
+      idempotencyKey: `page.view:${pageKey}:${Date.now()}`,
+      payload: { pageKey },
+      source: "main-window",
+    }).catch((error) => {
+      console.error("Failed to track achievement page view", error);
+    });
+  }, [route]);
 
   async function handleMainWindowZoomToggle() {
     try {
@@ -92,7 +118,6 @@ export function MainWindow() {
               </button>
             </>
           }
-          center="运行良好 · 零件组装中"
           onDragStart={() => void startDraggingCurrentWindow()}
           stats={
             <div className="cwp-window-stats">
@@ -116,6 +141,14 @@ export function MainWindow() {
                 </span>
                 <span style={{ color: "var(--color-insight-gold)", marginLeft: "4px" }}>
                   {formatParts(workshop?.insight ?? 0)}
+                </span>
+              </div>
+              <div className="cwp-stat-pill" title="成就点数">
+                <span className="cwp-stat-pill-label" style={{ display: "inline-flex", alignItems: "center" }}>
+                  <PixelIcon name="achievement" size={12} style={{ color: "#e8aa55" }} />
+                </span>
+                <span style={{ color: "#e8aa55", marginLeft: "4px" }}>
+                  {formatParts(achievementSummary?.totalPoints ?? 0)}
                 </span>
               </div>
             </div>
@@ -160,12 +193,20 @@ export function MainWindow() {
               active: item.key === route,
               key: item.key,
               label: (
-                <>
-                  <span style={{ display: "inline-flex", alignItems: "center", marginRight: "6px" }}>
+                <span className="cwp-sidebar-route-label">
+                  <span className="cwp-sidebar-route-icon">
                     <PixelIcon name={routeLabels[item.key].icon} size={14} />
                   </span>
-                  {routeLabels[item.key].text}
-                </>
+                  <span className="cwp-sidebar-route-text">
+                    {routeLabels[item.key].text}
+                  </span>
+                  {item.key === "achievements" ? (
+                    <AchievementSidebarMarker
+                      count={achievementUnlockedCount}
+                      hasPending={unreadAchievementCount > 0}
+                    />
+                  ) : null}
+                </span>
               ),
               onClick: () => setRoute(item.key),
             }))}
@@ -177,7 +218,29 @@ export function MainWindow() {
             </Suspense>
           </section>
         </div>
+        <AchievementUnlockToast />
       </GlassPanel>
     </main>
+  );
+}
+
+function AchievementSidebarMarker({
+  count,
+  hasPending,
+}: {
+  count: number;
+  hasPending: boolean;
+}) {
+  if (count <= 0 && !hasPending) {
+    return null;
+  }
+
+  return (
+    <span
+      className={`cwp-sidebar-achievement-marker${hasPending ? " has-pending" : ""}`}
+      title={hasPending ? "有新的成就解锁" : `已解锁 ${count} 个成就`}
+    >
+      {count > 0 ? count : "新"}
+    </span>
   );
 }

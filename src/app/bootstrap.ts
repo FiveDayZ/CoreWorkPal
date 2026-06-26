@@ -40,14 +40,17 @@ async function bootstrapWindow(label: BootstrapWindowLabel): Promise<EventCleanu
   if (label === "main") {
     const [
       { registerMainWindowEvents },
+      { useAchievementStore },
       { useWorkshopStore },
       { useWorkLogStore },
     ] = await Promise.all([
       import("../services/events/mainWindowEvents"),
+      import("../stores/achievementStore"),
       import("../stores/workshopStore"),
       import("../stores/workLogStore"),
     ]);
 
+    void useAchievementStore.getState().loadSummary();
     void useWorkshopStore.getState().loadWorkshopState();
     void useWorkLogStore.getState().loadWorkLogReport();
     return registerMainWindowEvents();

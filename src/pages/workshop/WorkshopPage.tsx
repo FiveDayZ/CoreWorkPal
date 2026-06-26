@@ -585,7 +585,7 @@ function formatCost(cost: ResourceCost): React.ReactNode {
     return (
       <span className="cwp-upgrade-cost">
         升级 <PixelIcon name="wrench" size={12} style={{ color: "var(--color-brand-orange-strong)" }} />
-        {cost.parts} / <PixelIcon name="sparkle" size={12} style={{ color: "var(--color-insight-gold)" }} />
+        {cost.parts} / <PixelIcon name="lightbulb" size={12} style={{ color: "var(--color-insight-gold)" }} />
         {cost.insight}
       </span>
     );

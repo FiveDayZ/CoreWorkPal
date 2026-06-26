@@ -1,4 +1,5 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useAchievementStore } from "../../stores/achievementStore";
 import { isMainRoute } from "../../routeTypes";
 import { useHardwareStore } from "../../stores/hardwareStore";
 import { useSettingsStore } from "../../stores/settingsStore";
@@ -6,6 +7,7 @@ import { useUiStore } from "../../stores/uiStore";
 import { useWorkLogStore } from "../../stores/workLogStore";
 import { useWorkshopStore } from "../../stores/workshopStore";
 import type { HardwareMetricsSnapshot } from "../../types/hardware";
+import type { AchievementUnlockedEvent } from "../../types/achievement";
 import type { AppSettings } from "../../types/settings";
 import type { WorkLogReport } from "../../types/workLog";
 import type { WorkshopState } from "../../types/workshop";
@@ -45,6 +47,19 @@ export function registerMainWindowEvents() {
   );
 
   registerPetStateListeners(unlisteners);
+
+  unlisteners.push(
+    listen<AchievementUnlockedEvent>("achievement:unlocked", (event) => {
+      const achievementStore = useAchievementStore.getState();
+      achievementStore.pushUnlocked(event.payload);
+      void achievementStore.loadSummary().catch((error) => {
+        console.error("Failed to reload achievement summary", error);
+      });
+      void achievementStore.loadCards().catch((error) => {
+        console.error("Failed to reload achievement cards", error);
+      });
+    }),
+  );
 
   unlisteners.push(
     listen<AppSettings>("settings:updated", (event) => {

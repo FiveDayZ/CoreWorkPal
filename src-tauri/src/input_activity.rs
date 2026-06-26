@@ -4,6 +4,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     app_state::AppState,
+    commands::record_internal_achievement_event,
     models::{current_timestamp_ms, date_key_from_timestamp, WorkLogEntry, WorkLogReport},
 };
 
@@ -79,6 +80,20 @@ async fn flush_input_activity(app: &AppHandle, delta: InputActivityDelta) {
 
     if let Err(error) = app.emit("worklog:updated", updated_report) {
         tracing::warn!("failed to emit worklog:updated after input activity: {error}");
+    }
+
+    if let Err(error) = record_internal_achievement_event(
+        app,
+        "hardware.segment_rollup",
+        format!("input.activity:{timestamp}"),
+        serde_json::json!({
+            "mouseClickCount": delta.mouse_clicks,
+            "keyboardPressCount": delta.keyboard_presses,
+        }),
+    )
+    .await
+    {
+        tracing::warn!("failed to record input achievement event: {error}");
     }
 }
 

@@ -1,20 +1,160 @@
 use std::collections::BTreeMap;
 
 use chrono::{Duration, Local};
-use tauri::{AppHandle, Emitter, State};
+use serde_json::Value;
+use tauri::{AppHandle, Emitter, Manager, State};
 
 pub mod updater;
 
 use crate::{
+    achievements::{
+        get_achievement_card, list_achievement_cards, load_seed_definitions,
+        mark_achievement_notifications_seen as mark_notifications_seen_in_book,
+        record_achievement_event, summarize_achievements, AchievementCard, AchievementSummary,
+        TrackAchievementEventRequest, TrackAchievementEventResponse,
+    },
     app_state::AppState,
     models::{
-        today_key, AppSettings, AppSettingsPatch, DailyWorkAssessment,
+        current_timestamp_ms, today_key, AppSettings, AppSettingsPatch, DailyWorkAssessment,
         DailyWorkAssessmentSummary, DailyWorkAssessmentTrend, HardwareSnapshot, WorkLogEntry,
         WorkLogReport, WorkshopState,
     },
     taskbar_embed,
     window_manager,
 };
+
+#[tauri::command]
+pub async fn track_achievement_event(
+    request: TrackAchievementEventRequest,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<TrackAchievementEventResponse, String> {
+    record_achievement_event_with_state(state.inner(), &app, request).await
+}
+
+#[tauri::command]
+pub async fn get_achievement_summary(
+    state: State<'_, AppState>,
+) -> Result<AchievementSummary, String> {
+    let definitions = load_seed_definitions().map_err(|error| error.to_string())?;
+    let achievements = state.achievements.read().await;
+    Ok(summarize_achievements(&achievements, &definitions))
+}
+
+#[tauri::command]
+pub async fn list_achievements(
+    include_unlocked_hidden: Option<bool>,
+    state: State<'_, AppState>,
+) -> Result<Vec<AchievementCard>, String> {
+    let definitions = load_seed_definitions().map_err(|error| error.to_string())?;
+    let achievements = state.achievements.read().await;
+    Ok(list_achievement_cards(
+        &achievements,
+        &definitions,
+        include_unlocked_hidden.unwrap_or(true),
+    ))
+}
+
+#[tauri::command]
+pub async fn get_achievement_detail(
+    achievement_id: String,
+    state: State<'_, AppState>,
+) -> Result<Option<AchievementCard>, String> {
+    let definitions = load_seed_definitions().map_err(|error| error.to_string())?;
+    let achievements = state.achievements.read().await;
+    Ok(get_achievement_card(
+        &achievements,
+        &definitions,
+        &achievement_id,
+        true,
+    ))
+}
+
+#[tauri::command]
+pub async fn mark_achievement_notifications_seen(
+    unlock_ids: Option<Vec<String>>,
+    state: State<'_, AppState>,
+) -> Result<AchievementSummary, String> {
+    let definitions = load_seed_definitions().map_err(|error| error.to_string())?;
+    let summary = {
+        let mut achievements = state.achievements.write().await;
+        let changed = mark_notifications_seen_in_book(
+            &mut achievements,
+            unlock_ids,
+            current_timestamp_ms(),
+        );
+        if changed > 0 {
+            state.storage.save_achievements(&achievements)?;
+        }
+        summarize_achievements(&achievements, &definitions)
+    };
+
+    Ok(summary)
+}
+
+pub async fn record_internal_achievement_event(
+    app: &AppHandle,
+    event_name: &str,
+    idempotency_key: String,
+    payload: Value,
+) -> Result<TrackAchievementEventResponse, String> {
+    let Some(state) = app.try_state::<AppState>() else {
+        return Err("app state is not available".to_string());
+    };
+
+    let request = TrackAchievementEventRequest {
+        event_name: event_name.to_string(),
+        occurred_at: current_timestamp_ms(),
+        idempotency_key,
+        payload,
+        source: "backend".to_string(),
+    };
+
+    record_achievement_event_with_state(state.inner(), app, request).await
+}
+
+async fn record_achievement_event_with_state(
+    state: &AppState,
+    app: &AppHandle,
+    request: TrackAchievementEventRequest,
+) -> Result<TrackAchievementEventResponse, String> {
+    let definitions = load_seed_definitions().map_err(|error| error.to_string())?;
+    let response = {
+        let mut achievements = state.achievements.write().await;
+        let response = record_achievement_event(
+            &mut achievements,
+            &definitions,
+            request,
+            current_timestamp_ms(),
+            env!("CARGO_PKG_VERSION"),
+        );
+
+        if response.accepted {
+            state.storage.save_achievements(&achievements)?;
+        }
+
+        response
+    };
+
+    emit_achievement_unlocks(app, &response)?;
+    Ok(response)
+}
+
+fn emit_achievement_unlocks(
+    app: &AppHandle,
+    response: &TrackAchievementEventResponse,
+) -> Result<(), String> {
+    if response.unlocked.is_empty() {
+        return Ok(());
+    }
+
+    for unlocked in &response.unlocked {
+        app.emit("achievement:unlocked", unlocked)
+            .map_err(|error| format!("failed to emit achievement:unlocked: {error}"))?;
+    }
+
+    emit_corecat_interaction_state(app, "achievementPop")
+}
 
 #[tauri::command]
 pub async fn get_hardware_snapshot(state: State<'_, AppState>) -> Result<HardwareSnapshot, String> {
@@ -46,6 +186,7 @@ pub async fn update_app_settings(
     app: AppHandle,
 ) -> Result<AppSettings, String> {
     let launch_at_startup = patch.launch_at_startup;
+    let achievement_payloads = settings_patch_achievement_payloads(&patch);
 
     if let Some(enabled) = launch_at_startup {
         sync_launch_at_startup(enabled)?;
@@ -62,6 +203,24 @@ pub async fn update_app_settings(
         .map_err(|error| format!("failed to emit settings:updated: {error}"))?;
 
     taskbar_embed::sync_taskbar_monitor(&app).await;
+
+    for payload in achievement_payloads {
+        let changed_key = payload
+            .get("changedKey")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let idempotency_key = format!("settings.update:{changed_key}:{}", current_timestamp_ms());
+        if let Err(error) = record_internal_achievement_event(
+            &app,
+            "settings.update",
+            idempotency_key,
+            payload,
+        )
+        .await
+        {
+            tracing::warn!("failed to record settings achievement event: {error}");
+        }
+    }
 
     Ok(settings)
 }
@@ -132,6 +291,18 @@ pub async fn reward_corecat_interaction(
     let next_workshop = state.workshop.read().await.clone();
 
     emit_corecat_interaction_state(&app, animation_state)?;
+    if action == "pet" {
+        if let Err(error) = record_internal_achievement_event(
+            &app,
+            "pet.click",
+            format!("pet.click:{}", current_timestamp_ms()),
+            serde_json::json!({ "action": action }),
+        )
+        .await
+        {
+            tracing::warn!("failed to record pet click achievement event: {error}");
+        }
+    }
     Ok(next_workshop)
 }
 
@@ -160,20 +331,47 @@ pub async fn get_work_log_report(
 pub async fn get_daily_work_assessment(
     date: Option<String>,
     state: State<'_, AppState>,
+    app: AppHandle,
 ) -> Result<DailyWorkAssessment, String> {
     let date = date.unwrap_or_else(today_key);
-    let work_logs = state.work_logs.read().await;
-    let entry = work_logs
-        .entries
-        .get(&date)
-        .cloned()
-        .unwrap_or_else(|| WorkLogEntry {
-            date: date.clone(),
-            ..Default::default()
-        });
-    let history = build_assessment_history(&work_logs.entries, &date);
+    let (entry, history) = {
+        let work_logs = state.work_logs.read().await;
+        let entry = work_logs
+            .entries
+            .get(&date)
+            .cloned()
+            .unwrap_or_else(|| WorkLogEntry {
+                date: date.clone(),
+                ..Default::default()
+            });
+        let history = build_assessment_history(&work_logs.entries, &date);
 
-    Ok(DailyWorkAssessment::from_entry(entry, &history))
+        (entry, history)
+    };
+
+    let assessment = DailyWorkAssessment::from_entry(entry, &history);
+    if let Err(error) = record_internal_achievement_event(
+        &app,
+        "worklog.daily_generated",
+        format!("worklog.daily_generated:{date}"),
+        serde_json::json!({
+            "date": date,
+            "score": assessment.score,
+            "dayType": format!("{:?}", assessment.day_type),
+            "rarityTier": assessment.rarity.tier.clone(),
+            "rarityScore": assessment.rarity.score,
+            "titleFamily": assessment.title.family.clone(),
+            "titleName": assessment.title.title.clone(),
+            "titleLevel": assessment.title.level,
+            "titleProgress": assessment.title.progress,
+        }),
+    )
+    .await
+    {
+        tracing::warn!("failed to record daily assessment achievement event: {error}");
+    }
+
+    Ok(assessment)
 }
 
 #[tauri::command]
@@ -259,7 +457,7 @@ fn build_assessment_history(
             entry_date.as_str() < date && entry_has_assessment_signal(entry)
         })
         .rev()
-        .take(7)
+        .take(90)
         .map(|(_, entry)| entry.clone())
         .collect()
 }
@@ -489,10 +687,16 @@ pub async fn toggle_monitor_bar(app: AppHandle, state: State<'_, AppState>) -> R
             ..Default::default()
         },
         state,
-        app,
+        app.clone(),
     )
     .await
-    .map(|_| ())
+    .map(|_| ())?;
+
+    if is_monitor_bar_visible {
+        record_monitor_bar_open(&app).await;
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -504,10 +708,13 @@ pub async fn show_monitor_bar(app: AppHandle, state: State<'_, AppState>) -> Res
             ..Default::default()
         },
         state,
-        app,
+        app.clone(),
     )
     .await
-    .map(|_| ())
+    .map(|_| ())?;
+
+    record_monitor_bar_open(&app).await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -528,7 +735,9 @@ pub async fn hide_monitor_bar(app: AppHandle, state: State<'_, AppState>) -> Res
 #[tauri::command]
 pub async fn show_pet_panel(app: AppHandle) -> Result<(), String> {
     window_manager::show_window(&app, "pet-panel", true).await?;
-    emit_corecat_interaction_state(&app, "panelOpen")
+    emit_corecat_interaction_state(&app, "panelOpen")?;
+    record_pet_panel_open(&app).await;
+    Ok(())
 }
 
 #[tauri::command]
@@ -546,7 +755,11 @@ pub async fn toggle_pet_panel(app: AppHandle) -> Result<(), String> {
         } else {
             "panelClose"
         },
-    )
+    )?;
+    if is_visible {
+        record_pet_panel_open(&app).await;
+    }
+    Ok(())
 }
 
 fn emit_corecat_interaction_state(app: &AppHandle, state: &'static str) -> Result<(), String> {
@@ -578,6 +791,7 @@ pub async fn update_workshop_state(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<WorkshopState, String> {
+    let previous_workshop = state.workshop.read().await.clone();
     let next_workshop = {
         let mut w = state.workshop.write().await;
         *w = workshop;
@@ -587,5 +801,167 @@ pub async fn update_workshop_state(
 
     app.emit("workshop:updated", next_workshop.clone())
         .map_err(|error| format!("failed to emit workshop:updated: {error}"))?;
+    record_workshop_upgrade_events(&app, &previous_workshop, &next_workshop).await;
     Ok(next_workshop)
+}
+
+fn settings_patch_achievement_payloads(patch: &AppSettingsPatch) -> Vec<Value> {
+    let mut payloads = Vec::new();
+
+    macro_rules! push_bool {
+        ($field:ident, $key:literal) => {
+            if let Some(value) = patch.$field {
+                payloads.push(serde_json::json!({
+                    "changedKey": $key,
+                    "value": value,
+                }));
+            }
+        };
+    }
+
+    push_bool!(show_monitor_data_in_taskbar, "showMonitorDataInTaskbar");
+    push_bool!(enable_low_power_mode, "enableLowPowerMode");
+    push_bool!(enable_static_cat_mode, "enableStaticCatMode");
+    push_bool!(enable_pet_bubble, "enablePetBubble");
+    push_bool!(enable_sound, "enableSound");
+
+    if let Some(theme_name) = &patch.theme_name {
+        payloads.push(serde_json::json!({
+            "changedKey": "themeName",
+            "themeName": theme_name,
+        }));
+    }
+    if let Some(metrics) = &patch.visible_monitor_metrics {
+        payloads.push(serde_json::json!({
+            "changedKey": "visibleMonitorMetrics",
+            "visibleMetricCount": metrics.len(),
+        }));
+    }
+
+    payloads
+}
+
+async fn record_monitor_bar_open(app: &AppHandle) {
+    if let Err(error) = record_internal_achievement_event(
+        app,
+        "monitor_bar.open",
+        format!("monitor_bar.open:{}", current_timestamp_ms()),
+        serde_json::json!({}),
+    )
+    .await
+    {
+        tracing::warn!("failed to record monitor bar achievement event: {error}");
+    }
+}
+
+async fn record_pet_panel_open(app: &AppHandle) {
+    if let Err(error) = record_internal_achievement_event(
+        app,
+        "pet.panel.open",
+        format!("pet.panel.open:{}", current_timestamp_ms()),
+        serde_json::json!({}),
+    )
+    .await
+    {
+        tracing::warn!("failed to record pet panel achievement event: {error}");
+    }
+}
+
+async fn record_workshop_upgrade_events(
+    app: &AppHandle,
+    previous: &WorkshopState,
+    next: &WorkshopState,
+) {
+    if next.workshop_level > previous.workshop_level {
+        if let Err(error) = record_internal_achievement_event(
+            app,
+            "workshop.level_up",
+            format!("workshop.level_up:{}", current_timestamp_ms()),
+            serde_json::json!({
+                "fromLevel": previous.workshop_level,
+                "toLevel": next.workshop_level,
+            }),
+        )
+        .await
+        {
+            tracing::warn!("failed to record workshop level achievement event: {error}");
+        }
+    }
+
+    for (module_key, previous_parts, next_parts, previous_process, next_process) in [
+        (
+            "cpu",
+            previous.module_levels.cpu.parts,
+            next.module_levels.cpu.parts,
+            previous.module_levels.cpu.process,
+            next.module_levels.cpu.process,
+        ),
+        (
+            "gpu",
+            previous.module_levels.gpu.parts,
+            next.module_levels.gpu.parts,
+            previous.module_levels.gpu.process,
+            next.module_levels.gpu.process,
+        ),
+        (
+            "ram",
+            previous.module_levels.ram.parts,
+            next.module_levels.ram.parts,
+            previous.module_levels.ram.process,
+            next.module_levels.ram.process,
+        ),
+        (
+            "network",
+            previous.module_levels.network.parts,
+            next.module_levels.network.parts,
+            previous.module_levels.network.process,
+            next.module_levels.network.process,
+        ),
+        (
+            "temperature",
+            previous.module_levels.temperature.parts,
+            next.module_levels.temperature.parts,
+            previous.module_levels.temperature.process,
+            next.module_levels.temperature.process,
+        ),
+        (
+            "disk",
+            previous.module_levels.disk.parts,
+            next.module_levels.disk.parts,
+            previous.module_levels.disk.process,
+            next.module_levels.disk.process,
+        ),
+    ] {
+        if next_parts > previous_parts {
+            record_module_upgrade_event(app, module_key, "parts", previous_parts, next_parts).await;
+        }
+        if next_process > previous_process {
+            record_module_upgrade_event(app, module_key, "process", previous_process, next_process)
+                .await;
+        }
+    }
+}
+
+async fn record_module_upgrade_event(
+    app: &AppHandle,
+    module_key: &str,
+    track: &str,
+    from_level: u32,
+    to_level: u32,
+) {
+    if let Err(error) = record_internal_achievement_event(
+        app,
+        "workshop.module_upgrade",
+        format!("workshop.module_upgrade:{module_key}:{track}:{}", current_timestamp_ms()),
+        serde_json::json!({
+            "moduleKey": module_key,
+            "track": track,
+            "fromLevel": from_level,
+            "toLevel": to_level,
+        }),
+    )
+    .await
+    {
+        tracing::warn!("failed to record module upgrade achievement event: {error}");
+    }
 }

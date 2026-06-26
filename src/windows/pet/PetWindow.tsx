@@ -11,6 +11,7 @@ import {
   saveWindowPosition,
   showMainRoute,
   showPetPanel,
+  trackAchievementEvent,
 } from "../../services/tauriCommands";
 import {
   startDraggingCurrentWindow,
@@ -42,6 +43,7 @@ import { CoreCatPerformancePanel } from "../../pet/corecat/performance/CoreCatPe
 import type { CoreCatPerformanceReport } from "../../pet/corecat/performance/coreCatPerformanceTypes";
 import { CORE_CAT_ANIMATION_CONFIG } from "../../pet/corecat/animation/animationConfig";
 import type { CoreCatAnimationState } from "../../pet/corecat/animation/animationTypes";
+import { mapCatStateToCoreCatState } from "../../pet/corecat/animation/coreCatStates";
 import { getCoreCatOneShotDurationMs } from "../../pet/corecat/animation/animationStateMachine";
 import { getSpriteSheetOneShotDurationMs } from "../../pet/corecat/animation/spriteSheetAssets";
 import { resolveCoreCatHoverHitArea } from "../../pet/corecat/animation/hoverHitArea";
@@ -107,6 +109,8 @@ export function PetWindow() {
   const dragCandidateRef = useRef(false);
   const dragMovedRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
+  const dragStartAtRef = useRef(0);
+  const dragDistanceRef = useRef(0);
   const petCanvasRef = useRef<HTMLDivElement | null>(null);
   const saveTimerRef = useRef<number | null>(null);
   const interactionTimerRef = useRef<number | null>(null);
@@ -123,6 +127,7 @@ export function PetWindow() {
   const pendingInteractionStateRef = useRef<CoreCatAnimationState | null>(null);
   const interactionRequestIdRef = useRef(0);
   const errorGlitchArmedRef = useRef(true);
+  const reportedVisualAnimationRef = useRef<CoreCatAnimationState | null>(null);
   // 自引用的动画结束处理函数（存在 ref 里以支持递归调用）
   const finishInteractionRef = useRef<(() => void) | null>(null);
 
@@ -178,10 +183,12 @@ export function PetWindow() {
 
   function playInteractionState(state: CoreCatAnimationState) {
     const durationMs = getInteractionDurationMs(state);
+    const requestId = ++interactionRequestIdRef.current;
     setInteractionRequest({
-      requestId: ++interactionRequestIdRef.current,
+      requestId,
       state,
     });
+    recordCoreCatAnimationSeen(state, `interaction:${requestId}`);
 
     if (durationMs != null) {
       interactionTimerRef.current = window.setTimeout(
@@ -189,6 +196,22 @@ export function PetWindow() {
         durationMs + 80,
       );
     }
+  }
+
+  function recordCoreCatAnimationSeen(
+    animationState: CoreCatAnimationState,
+    reason: string,
+  ) {
+    const occurredAt = Date.now();
+    void trackAchievementEvent({
+      eventName: "corecat.animation_seen",
+      occurredAt,
+      idempotencyKey: `corecat.animation_seen:${animationState}:${reason}:${occurredAt}`,
+      payload: { animationState, reason },
+      source: "pet-window",
+    }).catch((error) => {
+      console.error("Failed to track CoreCat animation achievement event", error);
+    });
   }
 
   // finishInteractionRef：每次渲染都更新，确保始终捕获最新的 state setter 和 refs
@@ -324,6 +347,19 @@ export function PetWindow() {
   );
 
   useEffect(() => {
+    const animationState =
+      lowPowerModeEnabled || staticModeEnabled
+        ? "lowPowerStatic"
+        : mapCatStateToCoreCatState(visualState);
+    if (reportedVisualAnimationRef.current === animationState) {
+      return;
+    }
+
+    reportedVisualAnimationRef.current = animationState;
+    recordCoreCatAnimationSeen(animationState, "visual-state");
+  }, [lowPowerModeEnabled, staticModeEnabled, visualState]);
+
+  useEffect(() => {
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
@@ -345,7 +381,19 @@ export function PetWindow() {
       setIsDragging(false);
 
       if (didDrag) {
+        const endedAt = Date.now();
+        const durationMs = Math.max(0, endedAt - dragStartAtRef.current);
+        const distancePx = Math.round(dragDistanceRef.current);
         triggerInteractionState("dropLanding");
+        void trackAchievementEvent({
+          eventName: "pet.drag_end",
+          occurredAt: endedAt,
+          idempotencyKey: `pet.drag_end:${endedAt}:${distancePx}`,
+          payload: { durationMs, distancePx },
+          source: "pet-window",
+        }).catch((error) => {
+          console.error("Failed to track pet drag achievement event", error);
+        });
       }
     }
 
@@ -693,6 +741,8 @@ export function PetWindow() {
               dragCandidateRef.current = true;
               dragMovedRef.current = false;
               dragStartRef.current = { x: event.screenX, y: event.screenY };
+              dragStartAtRef.current = Date.now();
+              dragDistanceRef.current = 0;
               setIsMenuOpen(false);
             }
           }}
@@ -703,12 +753,17 @@ export function PetWindow() {
 
             const deltaX = Math.abs(event.screenX - dragStartRef.current.x);
             const deltaY = Math.abs(event.screenY - dragStartRef.current.y);
+            dragDistanceRef.current = Math.max(
+              dragDistanceRef.current,
+              Math.hypot(deltaX, deltaY),
+            );
             if (
               !dragMovedRef.current &&
               (deltaX > dragStartThresholdPx || deltaY > dragStartThresholdPx)
             ) {
               dragMovedRef.current = true;
               setIsDragging(true);
+              triggerInteractionState("dragging");
               void startDraggingCurrentWindow();
             }
           }}

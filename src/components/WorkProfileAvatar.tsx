@@ -41,8 +41,8 @@ const avatarMap: Record<string, string> = {
 export function WorkProfileAvatar({
   dayType,
   size,
-  width = 225,
-  height = 180,
+  width,
+  height,
   className,
   style,
 }: WorkProfileAvatarProps) {
@@ -56,15 +56,12 @@ export function WorkProfileAvatar({
     <img
       src={src}
       alt={dayType || "unknown"}
-      width={finalWidth}
-      height={finalHeight}
+      {...(finalWidth !== undefined ? { width: finalWidth } : {})}
+      {...(finalHeight !== undefined ? { height: finalHeight } : {})}
       className={className}
       style={{
         imageRendering: "pixelated",
-        objectFit: "contain",
-        display: "inline-block",
-        verticalAlign: "middle",
-        flexShrink: 0,
+        display: "block",
         ...style,
       }}
     />

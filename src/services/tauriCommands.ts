@@ -5,6 +5,12 @@ import type {
   DailyWorkAssessmentSummary,
   DailyWorkAssessmentTrend,
 } from "../types/dailyWorkAssessment";
+import type {
+  AchievementCard,
+  AchievementSummary,
+  TrackAchievementEventRequest,
+  TrackAchievementEventResponse,
+} from "../types/achievement";
 import type { HardwareSnapshot } from "../types/hardware";
 import type { AppSettings, AppSettingsPatch } from "../types/settings";
 import type { WorkLogReport } from "../types/workLog";
@@ -94,6 +100,202 @@ const browserSnapshot: HardwareSnapshot = {
   },
 };
 
+const browserAchievements: AchievementCard[] = [
+  {
+    achievementId: "A001",
+    title: "第一次唤醒 CoreCat",
+    categoryKey: "daily_use",
+    difficultyKey: "entry",
+    points: 5,
+    badgeKey: "cwp_badge_daily_first_launch_entry",
+    isHidden: false,
+    isUnlocked: true,
+    unlockedAt: Date.now() - 86400000 * 5,
+    unlockSnapshot: { "app.launch.count": 1 },
+    conditionSummary: "app.launch.count >= 1",
+    progress: null,
+  },
+  {
+    achievementId: "A002",
+    title: "30 分钟陪伴",
+    categoryKey: "daily_use",
+    difficultyKey: "entry",
+    points: 5,
+    badgeKey: "cwp_badge_daily_30m_companion_entry",
+    isHidden: false,
+    isUnlocked: false,
+    unlockedAt: null,
+    unlockSnapshot: null,
+    conditionSummary: "lifetime.total_online_seconds >= 1800",
+    progress: {
+      current: 900,
+      target: 1800,
+      percent: 50,
+      label: "分钟",
+      isComplete: false,
+    },
+  },
+  {
+    achievementId: "A021",
+    title: "4 小时陪伴",
+    categoryKey: "daily_use",
+    difficultyKey: "normal",
+    points: 10,
+    badgeKey: "cwp_badge_daily_4h_companion_normal",
+    isHidden: false,
+    isUnlocked: true,
+    unlockedAt: Date.now() - 86400000 * 3,
+    unlockSnapshot: { "lifetime.total_online_seconds": 14400 },
+    conditionSummary: "lifetime.total_online_seconds >= 14400",
+    progress: null,
+  },
+  {
+    achievementId: "A022",
+    title: "三日有迹",
+    categoryKey: "long_streak",
+    difficultyKey: "normal",
+    points: 10,
+    badgeKey: "cwp_badge_streak_3_active_days_normal",
+    isHidden: false,
+    isUnlocked: false,
+    unlockedAt: null,
+    unlockSnapshot: null,
+    conditionSummary: "calendar.days(active_seconds >= 1800) >= 3",
+    progress: {
+      current: 1,
+      target: 3,
+      percent: 33.3,
+      label: "天",
+      isComplete: false,
+    },
+  },
+  {
+    achievementId: "A041",
+    title: "24 小时陪伴",
+    categoryKey: "daily_use",
+    difficultyKey: "skilled",
+    points: 20,
+    badgeKey: "cwp_badge_daily_24h_companion_skilled",
+    isHidden: false,
+    isUnlocked: true,
+    unlockedAt: Date.now() - 86400000,
+    unlockSnapshot: { "lifetime.total_online_seconds": 86400 },
+    conditionSummary: "lifetime.total_online_seconds >= 86400",
+    progress: null,
+  },
+  {
+    achievementId: "A042",
+    title: "14 个活跃日",
+    categoryKey: "long_streak",
+    difficultyKey: "skilled",
+    points: 20,
+    badgeKey: "cwp_badge_streak_14_active_days_skilled",
+    isHidden: false,
+    isUnlocked: false,
+    unlockedAt: null,
+    unlockSnapshot: null,
+    conditionSummary: "calendar.days(active_seconds >= 1800) >= 14",
+    progress: {
+      current: 5,
+      target: 14,
+      percent: 35.7,
+      label: "天",
+      isComplete: false,
+    },
+  },
+  {
+    achievementId: "A061",
+    title: "7 天累计陪伴",
+    categoryKey: "daily_use",
+    difficultyKey: "elite",
+    points: 35,
+    badgeKey: "cwp_badge_daily_7d_companion_elite",
+    isHidden: false,
+    isUnlocked: false,
+    unlockedAt: null,
+    unlockSnapshot: null,
+    conditionSummary: "lifetime.total_online_seconds >= 604800",
+    progress: {
+      current: 259200,
+      target: 604800,
+      percent: 42.8,
+      label: "秒",
+      isComplete: false,
+    },
+  },
+  {
+    achievementId: "A081",
+    title: "30 天累计陪伴",
+    categoryKey: "daily_use",
+    difficultyKey: "epic",
+    points: 60,
+    badgeKey: "cwp_badge_daily_30d_companion_epic",
+    isHidden: false,
+    isUnlocked: false,
+    unlockedAt: null,
+    unlockSnapshot: null,
+    conditionSummary: "lifetime.total_online_seconds >= 2592000",
+    progress: {
+      current: 864000,
+      target: 2592000,
+      percent: 33.3,
+      label: "秒",
+      isComplete: false,
+    },
+  },
+  {
+    achievementId: "A101",
+    title: "365 天累计陪伴",
+    categoryKey: "daily_use",
+    difficultyKey: "legendary",
+    points: 100,
+    badgeKey: "cwp_badge_daily_365d_companion_legendary",
+    isHidden: false,
+    isUnlocked: false,
+    unlockedAt: null,
+    unlockSnapshot: null,
+    conditionSummary: "lifetime.total_online_seconds >= 31536000",
+    progress: {
+      current: 3153600,
+      target: 31536000,
+      percent: 10.0,
+      label: "秒",
+      isComplete: false,
+    },
+  }
+];
+
+const browserAchievementSummary: AchievementSummary = {
+  totalPoints: 35,
+  unlockedCount: 3,
+  visibleTotalCount: 9,
+  hiddenUnlockedCount: 0,
+  hiddenTotalCount: 0,
+  byDifficulty: {
+    entry: { unlocked: 1, total: 2 },
+    normal: { unlocked: 1, total: 2 },
+    skilled: { unlocked: 1, total: 2 },
+    elite: { unlocked: 0, total: 1 },
+    epic: { unlocked: 0, total: 1 },
+    legendary: { unlocked: 0, total: 1 },
+  },
+  byCategory: {
+    daily_use: { unlocked: 3, total: 7 },
+    task_efficiency: { unlocked: 0, total: 0 },
+    long_streak: { unlocked: 0, total: 2 },
+    feature_exploration: { unlocked: 0, total: 0 },
+    data_milestone: { unlocked: 0, total: 0 },
+    workshop_growth: { unlocked: 0, total: 0 },
+    hardware_health: { unlocked: 0, total: 0 },
+    social_collaboration: { unlocked: 0, total: 0 },
+    hidden_easter: { unlocked: 0, total: 0 },
+  },
+  latestUnlocks: [],
+  highestRankUnlocks: [],
+  pendingNotificationCount: 0,
+};
+
+
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -182,42 +384,126 @@ function createBrowserWorkLogReport(date = todayKey()): WorkLogReport {
   };
 }
 
+function createBrowserWorkprint(dayType: "stableMaintenance" | "buildBurst" | "deepFocus" | "unknown") {
+  const isEmpty = dayType === "unknown";
+  const label =
+    dayType === "buildBurst"
+      ? "构建峰值型"
+      : dayType === "deepFocus"
+        ? "长时稳定型"
+        : dayType === "stableMaintenance"
+          ? "平稳维护型"
+          : "数据积累中";
+
+  return {
+    label,
+    description: isEmpty
+      ? "这一天的数据还不足以形成稳定指纹。"
+      : `今日 Workprint 呈现为${label}：负载、输入节奏和 IO 活动都来自预览数据。`,
+    pixelGrid: isEmpty
+      ? Array.from({ length: 64 }, () => 0)
+      : [
+          1, 1, 2, 2, 0, 0, 0, 0,
+          1, 2, 2, 2, 0, 0, 0, 0,
+          1, 1, 1, 0, 0, 0, 0, 0,
+          1, 1, 0, 0, 0, 0, 0, 0,
+          1, 2, 2, 1, 0, 0, 0, 0,
+          1, 1, 2, 1, 0, 0, 0, 0,
+          1, 2, 1, 2, 0, 0, 0, 0,
+          1, 1, 2, 2, 0, 0, 0, 0,
+        ],
+    width: 8,
+    height: 8,
+    loadShape: isEmpty ? 0 : 0.42,
+    inputRhythm: isEmpty ? 0 : 0.36,
+    ioIntensity: isEmpty ? 0 : 0.28,
+    thermalPressure: isEmpty ? 0 : 0.12,
+    continuity: isEmpty ? 0 : 0.44,
+  };
+}
+
 function createBrowserDailyWorkAssessment(date = todayKey()): DailyWorkAssessment {
   const report = createBrowserWorkLogReport(date);
   const isToday = date === todayKey();
+  const workprint = createBrowserWorkprint(isToday ? "stableMaintenance" : "unknown");
+  const timeline = isToday
+    ? [
+        {
+          startTime: "09:00",
+          endTime: "10:15",
+          kind: "steadyProgress" as const,
+          intensity: 0.42,
+          label: "稳定推进",
+          description: "预览片段：系统负载和输入节奏比较平稳。",
+        },
+        {
+          startTime: "10:15",
+          endTime: "10:45",
+          kind: "buildPeak" as const,
+          intensity: 0.68,
+          label: "构建高峰",
+          description: "预览片段：CPU 和磁盘活动同时抬升。",
+        },
+        {
+          startTime: "10:45",
+          endTime: "11:30",
+          kind: "archiveFlow" as const,
+          intensity: 0.5,
+          label: "资料归档",
+          description: "预览片段：磁盘和网络流动较明显。",
+        },
+      ]
+    : [];
 
   return {
     date,
     dayType: isToday ? "stableMaintenance" : "unknown",
     dayTypeTitle: isToday ? "平稳维护日" : "数据积累中",
+    rarity: isToday
+      ? {
+          tier: "B",
+          label: "B 级工况卡",
+          score: 48,
+          reason: "预览画像分 42，连续活跃 1 天，负载指数 42，稳定指数 88",
+        }
+      : {
+          tier: "C",
+          label: "C 级工况卡",
+          score: 12,
+          reason: "预览数据不足，先收藏为观察卡",
+        },
+    title: isToday
+      ? {
+          family: "steady",
+          title: "冷静维护员",
+          level: 2,
+          progress: 3,
+          nextLevelAt: 7,
+        }
+      : {
+          family: "observe",
+          title: "观察记录员",
+          level: 1,
+          progress: 1,
+          nextLevelAt: 3,
+        },
+    corecatCommentary: isToday
+      ? {
+          tone: "encouragement",
+          title: "CoreCat 点评：节奏已经成型",
+          body: "预览数据里这张卡偏稳定，正式运行后 CoreCat 会用真实硬件和输入节奏生成更准确的点评。",
+        }
+      : {
+          tone: "tease",
+          title: "CoreCat 吐槽：这张卡还在孵化",
+          body: "这一天暂时没有足够采样，CoreCat 只能先把它记成观察卡。",
+        },
     score: report.totalScore,
     corecatSummary: isToday
       ? "浏览器预览数据：CoreCat 会在 Tauri 运行后根据真实硬件与键鼠节奏生成每日工作画像。"
       : "这一天暂时没有足够的本地采样数据，CoreCat 还无法形成可靠画像。",
     badgeIds: isToday ? ["STEADY", "OBSERVE"] : ["OBSERVE"],
-    workprint: {
-      label: isToday ? "平稳维护型" : "数据积累中",
-      description: isToday
-        ? "今日 Workprint 呈现为平稳维护型：负载适中，输入节奏和 IO 活动都处于预览水平。"
-        : "这一天的数据还不足以形成稳定指纹。",
-      pixelGrid: [
-        1, 1, 2, 2, 0, 0, 0, 0,
-        1, 2, 2, 2, 0, 0, 0, 0,
-        1, 1, 1, 0, 0, 0, 0, 0,
-        1, 1, 0, 0, 0, 0, 0, 0,
-        1, 2, 2, 1, 0, 0, 0, 0,
-        1, 1, 2, 1, 0, 0, 0, 0,
-        1, 2, 1, 2, 0, 0, 0, 0,
-        1, 1, 2, 2, 0, 0, 0, 0,
-      ],
-      width: 8,
-      height: 8,
-      loadShape: isToday ? 0.42 : 0,
-      inputRhythm: isToday ? 0.36 : 0,
-      ioIntensity: isToday ? 0.28 : 0,
-      thermalPressure: isToday ? 0.12 : 0,
-      continuity: isToday ? 0.44 : 0,
-    },
+    workprint,
     baseline: {
       sampleDays: 0,
       activeSecondsDeltaRatio: 0,
@@ -227,34 +513,8 @@ function createBrowserDailyWorkAssessment(date = todayKey()): DailyWorkAssessmen
       inputDeltaRatio: 0,
       summary: "浏览器预览暂不包含历史基线；Tauri 运行几天后会生成近 7 日对比。",
     },
-    timeline: isToday
-      ? [
-          {
-            startTime: "09:00",
-            endTime: "10:15",
-            kind: "steadyProgress",
-            intensity: 0.42,
-            label: "稳定推进",
-            description: "预览片段：系统负载和输入节奏比较平稳。",
-          },
-          {
-            startTime: "10:15",
-            endTime: "10:45",
-            kind: "buildPeak",
-            intensity: 0.68,
-            label: "构建高峰",
-            description: "预览片段：CPU 和磁盘活动同时抬升。",
-          },
-          {
-            startTime: "10:45",
-            endTime: "11:30",
-            kind: "archiveFlow",
-            intensity: 0.5,
-            label: "资料归档",
-            description: "预览片段：磁盘和网络流动较明显。",
-          },
-        ]
-      : [],
+    timeline,
+    mvpSegments: timeline.slice(1, 3),
     highlights: [
       {
         title: "CoreCat 已准备记录节奏",
@@ -294,6 +554,15 @@ function createBrowserDailyWorkAssessmentHistory(
       date: relativeDateKey(0),
       dayType: "stableMaintenance",
       dayTypeTitle: "平稳维护日",
+      rarity: { tier: "B", label: "B 级工况卡", score: 48, reason: "预览稳定工况卡" },
+      title: {
+        family: "steady",
+        title: "冷静维护员",
+        level: 2,
+        progress: 3,
+        nextLevelAt: 7,
+      },
+      workprint: createBrowserWorkprint("stableMaintenance"),
       score: 42,
       corecatSummary: "今天的预览画像偏平稳：有持续观察，也有几段轻量推进。",
       badgeIds: ["STEADY", "OBSERVE"],
@@ -304,6 +573,15 @@ function createBrowserDailyWorkAssessmentHistory(
       date: relativeDateKey(1),
       dayType: "buildBurst",
       dayTypeTitle: "编译构建日",
+      rarity: { tier: "S", label: "S 级工况卡", score: 76, reason: "预览构建峰值卡" },
+      title: {
+        family: "build",
+        title: "风暴构筑师",
+        level: 2,
+        progress: 3,
+        nextLevelAt: 7,
+      },
+      workprint: createBrowserWorkprint("buildBurst"),
       score: 78,
       corecatSummary: "昨天出现过更明显的 CPU 与磁盘高峰，像是一段集中构建窗口。",
       badgeIds: ["BUILD", "HEAT"],
@@ -314,6 +592,15 @@ function createBrowserDailyWorkAssessmentHistory(
       date: relativeDateKey(2),
       dayType: "deepFocus",
       dayTypeTitle: "深度工作日",
+      rarity: { tier: "S", label: "S 级工况卡", score: 82, reason: "预览深度专注卡" },
+      title: {
+        family: "focus",
+        title: "深潜构筑师",
+        level: 2,
+        progress: 3,
+        nextLevelAt: 7,
+      },
+      workprint: createBrowserWorkprint("deepFocus"),
       score: 84,
       corecatSummary: "长时间稳定输入，压力适中，更像专注推进的一天。",
       badgeIds: ["FOCUS", "FLOW"],
@@ -324,6 +611,15 @@ function createBrowserDailyWorkAssessmentHistory(
       date: relativeDateKey(3),
       dayType: "unknown",
       dayTypeTitle: "未形成画像",
+      rarity: { tier: "C", label: "C 级工况卡", score: 0, reason: "预览空日期" },
+      title: {
+        family: "observe",
+        title: "观察记录员",
+        level: 1,
+        progress: 1,
+        nextLevelAt: 3,
+      },
+      workprint: createBrowserWorkprint("unknown"),
       score: 0,
       corecatSummary: "这一天没有足够的预览采样，历史墙会以灰态保留这个空日期。",
       badgeIds: ["EMPTY"],
@@ -334,6 +630,15 @@ function createBrowserDailyWorkAssessmentHistory(
       date: relativeDateKey(4),
       dayType: "lowLoadCompanion",
       dayTypeTitle: "低负载陪伴日",
+      rarity: { tier: "C", label: "C 级工况卡", score: 32, reason: "预览低负载陪伴卡" },
+      title: {
+        family: "quiet",
+        title: "安静陪伴员",
+        level: 1,
+        progress: 1,
+        nextLevelAt: 3,
+      },
+      workprint: createBrowserWorkprint("stableMaintenance"),
       score: 24,
       corecatSummary: "这天记录较轻，适合和高投入日期放在一起对照节奏变化。",
       badgeIds: ["LIGHT", "OBSERVE"],
@@ -426,6 +731,70 @@ export async function getHardwareSnapshot(): Promise<HardwareSnapshot> {
   }
 
   return invoke<HardwareSnapshot>("get_hardware_snapshot");
+}
+
+export async function trackAchievementEvent(
+  request: TrackAchievementEventRequest,
+): Promise<TrackAchievementEventResponse> {
+  if (!isTauriRuntime()) {
+    return { accepted: true, unlocked: [] };
+  }
+
+  return invoke<TrackAchievementEventResponse>("track_achievement_event", {
+    request: {
+      ...request,
+      source: request.source ?? "frontend",
+    },
+  });
+}
+
+export async function getAchievementSummary(): Promise<AchievementSummary> {
+  if (!isTauriRuntime()) {
+    return browserAchievementSummary;
+  }
+
+  return invoke<AchievementSummary>("get_achievement_summary");
+}
+
+export async function listAchievements(
+  includeUnlockedHidden = true,
+): Promise<AchievementCard[]> {
+  if (!isTauriRuntime()) {
+    return browserAchievements;
+  }
+
+  return invoke<AchievementCard[]>("list_achievements", {
+    includeUnlockedHidden,
+  });
+}
+
+export async function getAchievementDetail(
+  achievementId: string,
+): Promise<AchievementCard | null> {
+  if (!isTauriRuntime()) {
+    return (
+      browserAchievements.find(
+        (achievement) =>
+          achievement.achievementId.toLowerCase() === achievementId.toLowerCase(),
+      ) ?? null
+    );
+  }
+
+  return invoke<AchievementCard | null>("get_achievement_detail", {
+    achievementId,
+  });
+}
+
+export async function markAchievementNotificationsSeen(
+  unlockIds?: string[],
+): Promise<AchievementSummary> {
+  if (!isTauriRuntime()) {
+    return { ...browserAchievementSummary, pendingNotificationCount: 0 };
+  }
+
+  return invoke<AchievementSummary>("mark_achievement_notifications_seen", {
+    unlockIds: unlockIds ?? null,
+  });
 }
 
 export async function getAppSettings(): Promise<AppSettings> {

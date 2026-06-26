@@ -1,18 +1,21 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::models::{
-    AppSettings, LayoutState, WorkLogBook, WorkshopState, APP_SETTINGS_SCHEMA_VERSION,
+use crate::{
+    achievements::AchievementBook,
+    models::{AppSettings, LayoutState, WorkLogBook, WorkshopState, APP_SETTINGS_SCHEMA_VERSION},
 };
 
 #[derive(Debug)]
 pub struct StorageService {
     root: PathBuf,
+    corruption_rebuilds: Arc<Mutex<Vec<String>>>,
 }
 
 impl StorageService {
@@ -24,7 +27,10 @@ impl StorageService {
     pub fn new_with_root(root: PathBuf) -> Result<Self, Box<dyn std::error::Error>> {
         fs::create_dir_all(root.join("logs"))?;
         fs::create_dir_all(root.join("backups"))?;
-        Ok(Self { root })
+        Ok(Self {
+            root,
+            corruption_rebuilds: Arc::new(Mutex::new(Vec::new())),
+        })
     }
 
     pub fn load_or_create_settings(&self) -> Result<AppSettings, String> {
@@ -63,6 +69,21 @@ impl StorageService {
         self.write_json("work_logs.json", work_logs)
     }
 
+    pub fn load_or_create_achievements(&self) -> Result<AchievementBook, String> {
+        self.load_or_create("achievements.json")
+    }
+
+    pub fn save_achievements(&self, achievements: &AchievementBook) -> Result<(), String> {
+        self.write_json("achievements.json", achievements)
+    }
+
+    pub fn take_corruption_rebuilds(&self) -> Vec<String> {
+        self.corruption_rebuilds
+            .lock()
+            .map(|mut rebuilds| std::mem::take(&mut *rebuilds))
+            .unwrap_or_default()
+    }
+
     fn load_or_create<T>(&self, file_name: &str) -> Result<T, String>
     where
         T: Default + Serialize + DeserializeOwned,
@@ -87,6 +108,7 @@ impl StorageService {
                 self.backup_corrupted_file(&path, file_name)?;
                 let value = T::default();
                 self.write_json(file_name, &value)?;
+                self.record_corruption_rebuild(file_name);
                 tracing::warn!("rebuilt corrupted {file_name}: {error}");
                 Ok(value)
             }
@@ -120,6 +142,12 @@ impl StorageService {
         fs::copy(path, backup_path)
             .map(|_| ())
             .map_err(|error| format!("failed to backup corrupted {file_name}: {error}"))
+    }
+
+    fn record_corruption_rebuild(&self, file_name: &str) {
+        if let Ok(mut rebuilds) = self.corruption_rebuilds.lock() {
+            rebuilds.push(file_name.to_string());
+        }
     }
 }
 
@@ -294,6 +322,11 @@ mod tests {
         assert_eq!(settings.schema_version, APP_SETTINGS_SCHEMA_VERSION);
         let backup_count = fs::read_dir(root.join("backups")).unwrap().count();
         assert_eq!(backup_count, 1);
+        assert_eq!(
+            storage.take_corruption_rebuilds(),
+            vec!["settings.json".to_string()]
+        );
+        assert!(storage.take_corruption_rebuilds().is_empty());
 
         let _ = fs::remove_dir_all(root);
     }

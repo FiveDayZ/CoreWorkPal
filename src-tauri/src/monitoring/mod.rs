@@ -10,6 +10,7 @@ pub use sysinfo_adapter::SysinfoAdapter;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
+    commands::record_internal_achievement_event,
     app_state::AppState,
     models::{current_timestamp_ms, HardwareMetricsSnapshot, HardwareSnapshot},
     pet::PetStateService,
@@ -119,8 +120,11 @@ async fn update_work_log_for_snapshot(app: &AppHandle, snapshot: &HardwareSnapsh
 async fn update_workshop_for_snapshot(app: &AppHandle, snapshot: &HardwareSnapshot) {
     let state = app.state::<AppState>();
     let settings = state.settings.read().await.clone();
-    let updated_workshop = {
+    let (updated_workshop, online_delta, parts_delta, insight_delta) = {
         let mut workshop = state.workshop.write().await;
+        let previous_online_seconds = workshop.total_online_seconds;
+        let previous_parts = workshop.parts;
+        let previous_insight = workshop.insight;
         let changed = ProductionService::apply_tick(
             &mut workshop,
             &settings,
@@ -132,12 +136,49 @@ async fn update_workshop_for_snapshot(app: &AppHandle, snapshot: &HardwareSnapsh
             return;
         }
 
+        let online_delta = workshop
+            .total_online_seconds
+            .saturating_sub(previous_online_seconds);
+        let parts_delta = (workshop.parts - previous_parts).max(0.0);
+        let insight_delta = (workshop.insight - previous_insight).max(0.0);
+
         if let Err(error) = state.storage.save_workshop(&workshop) {
             tracing::warn!("failed to save workshop state: {error}");
         }
 
-        workshop.clone()
+        (workshop.clone(), online_delta, parts_delta, insight_delta)
     };
+
+    if online_delta > 0 {
+        let idempotency_key = format!("app.active_minute:{}:{online_delta}", snapshot.timestamp);
+        if let Err(error) = record_internal_achievement_event(
+            app,
+            "app.active_minute",
+            idempotency_key,
+            serde_json::json!({ "seconds": online_delta }),
+        )
+        .await
+        {
+            tracing::warn!("failed to record app.active_minute achievement event: {error}");
+        }
+    }
+
+    if parts_delta > 0.0 || insight_delta > 0.0 {
+        let idempotency_key = format!("workshop.production_tick:{}", snapshot.timestamp);
+        if let Err(error) = record_internal_achievement_event(
+            app,
+            "workshop.production_tick",
+            idempotency_key,
+            serde_json::json!({
+                "partsDelta": parts_delta,
+                "insightDelta": insight_delta,
+            }),
+        )
+        .await
+        {
+            tracing::warn!("failed to record workshop production achievement event: {error}");
+        }
+    }
 
     if let Err(error) = app.emit("workshop:updated", updated_workshop) {
         tracing::warn!("failed to emit workshop:updated: {error}");

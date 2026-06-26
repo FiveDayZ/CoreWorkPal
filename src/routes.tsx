@@ -56,6 +56,15 @@ export const mainRoutes: Array<{
     ),
   },
   {
+    key: "achievements",
+    label: "Achievements",
+    element: lazy(() =>
+      import("./pages/achievements/AchievementsPage").then((module) => ({
+        default: module.AchievementsPage,
+      })),
+    ),
+  },
+  {
     key: "about",
     label: "About",
     element: lazy(() =>

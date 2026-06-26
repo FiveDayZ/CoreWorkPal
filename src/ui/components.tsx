@@ -314,7 +314,7 @@ export function TitleBar({
           v{typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.1.0"}
         </span>
       </div>
-      <div className="cwp-titlebar-center">{center}</div>
+      {center ? <div className="cwp-titlebar-center">{center}</div> : null}
       <div className="cwp-titlebar-right">
         <div className="cwp-titlebar-stats">{stats}</div>
         <div className="cwp-window-actions">{actions}</div>
