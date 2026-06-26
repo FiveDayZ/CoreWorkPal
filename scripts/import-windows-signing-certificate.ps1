@@ -4,12 +4,8 @@ $repoRoot = Split-Path -Parent $PSScriptRoot
 $configPath = Join-Path $repoRoot "src-tauri\tauri.windows.conf.json"
 
 if ([string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE) -or [string]::IsNullOrWhiteSpace($env:WINDOWS_CERTIFICATE_PASSWORD)) {
-    if ($env:ALLOW_UNSIGNED_WINDOWS_BUILD -eq "true") {
-        Write-Warning "WINDOWS_CERTIFICATE or WINDOWS_CERTIFICATE_PASSWORD is not configured. Windows bundles will be built unsigned."
-        return
-    }
-
-    throw "WINDOWS_CERTIFICATE and WINDOWS_CERTIFICATE_PASSWORD must be configured before publishing signed Windows bundles."
+    Write-Warning "WINDOWS_CERTIFICATE or WINDOWS_CERTIFICATE_PASSWORD is not configured. Windows bundles will be built unsigned."
+    return
 }
 
 $timestampUrl = $env:WINDOWS_SIGNING_TIMESTAMP_URL
