@@ -1,6 +1,6 @@
 # CoreWorkPal ⚙️🐱
 
-> **把你的 CPU 占用率，变成一只猫的冒险故事。**
+> **把你的 CPU/GPU/RAM 占用率，变成一只猫的冒险故事。**
 
 **CoreWorkPal** 是一款面向开发者与重度 PC 用户的轻量级桌面伴侣，基于 **Tauri 2 + React 19 + TypeScript + Rust** 构建。它实时监控你电脑的硬件状态（CPU、GPU、内存、温度、网络、磁盘），并将这些枯燥的数字转化为一只叫 **CoreCat** 的像素猫咪的动态行为、工坊养成进度以及可收集的成就徽章——让每一天的工作都变得更有趣一点。
 
@@ -198,4 +198,4 @@ pnpm tauri build
 
 ---
 
-*CoreWorkPal v0.1.9 · MIT License · Made with ❤️ and a lot of pixel art*
+*CoreWorkPal v0.2.0 · MIT License · Made with ❤️ and a lot of pixel art*
