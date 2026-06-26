@@ -2,8 +2,7 @@ use std::fmt;
 
 use super::definitions::{AchievementCategory, AchievementDefinition, AchievementDifficulty};
 
-const ACHIEVEMENT_SPEC_MD: &str =
-    include_str!("../../../.docs/achievement_badge_system_development_spec.md");
+const ACHIEVEMENT_SPEC_MD: &str = include_str!("seed.md");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AchievementSeedError {
