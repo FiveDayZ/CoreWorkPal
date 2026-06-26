@@ -18,5 +18,6 @@ docs/
 stderr.txt
 stdout.txt
 .docs/
+src-tauri/tauri.windows.conf.json
 AGENTS.md.md
 CoreWorkPal.code-workspace
