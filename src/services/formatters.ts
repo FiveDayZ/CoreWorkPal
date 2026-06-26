@@ -33,9 +33,9 @@ export function formatBytes(value: number | null): string {
 
 export function formatDuration(seconds: number): string {
   const safeSeconds = Math.max(0, Math.floor(seconds));
-  const minutes = Math.floor(safeSeconds / 60);
-  const remainingSeconds = safeSeconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  return `${hours}h ${minutes}m`;
 }
 
 export function formatParts(value: number): string {

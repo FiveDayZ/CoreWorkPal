@@ -8,9 +8,6 @@ const displayMs = 4500;
 export function AchievementUnlockToast() {
   const current = useAchievementStore((state) => state.unlockQueue[0]);
   const dismissUnlocked = useAchievementStore((state) => state.dismissUnlocked);
-  const markNotificationsSeen = useAchievementStore(
-    (state) => state.markNotificationsSeen,
-  );
 
   useEffect(() => {
     if (!current) {
@@ -19,15 +16,11 @@ export function AchievementUnlockToast() {
 
     const unlockId = current.unlockId;
     const timer = window.setTimeout(() => {
-      void markNotificationsSeen([unlockId])
-        .catch((error) => {
-          console.error("Failed to mark achievement notification seen", error);
-        })
-        .finally(() => dismissUnlocked(unlockId));
+      dismissUnlocked(unlockId);
     }, displayMs);
 
     return () => window.clearTimeout(timer);
-  }, [current, dismissUnlocked, markNotificationsSeen]);
+  }, [current, dismissUnlocked]);
 
   if (!current) {
     return null;
@@ -56,15 +49,7 @@ export function AchievementUnlockToast() {
         aria-label="关闭成就提示"
         className="cwp-achievement-toast-close"
         onClick={() => {
-          const unlockId = current.unlockId;
-          void markNotificationsSeen([unlockId])
-            .catch((error) => {
-              console.error(
-                "Failed to mark achievement notification seen",
-                error,
-              );
-            })
-            .finally(() => dismissUnlocked(unlockId));
+          dismissUnlocked(current.unlockId);
         }}
         type="button"
       >

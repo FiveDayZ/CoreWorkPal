@@ -2,8 +2,8 @@ use chrono::Local;
 
 use crate::models::{AppSettings, HardwareSnapshot, ModuleUpgradeLevels, WorkshopState};
 
-const BASE_PARTS_PER_MINUTE: f64 = 1.2;
-const BASE_INSIGHT_PER_MINUTE: f64 = 0.08;
+const BASE_PARTS_PER_MINUTE: f64 = 1.6;
+const BASE_INSIGHT_PER_MINUTE: f64 = 0.13;
 const MAX_DELTA_SECONDS: i64 = 30;
 
 pub struct ProductionService;
@@ -92,27 +92,27 @@ fn calculate_output(
     let workshop_bonus = 1.0 + workshop.workshop_level.saturating_sub(1) as f64 * 0.12;
     let parts_module_bonus = module_bonus(
         &[
-            (&module_levels.cpu, 0.050, 0.025),
-            (&module_levels.gpu, 0.040, 0.020),
-            (&module_levels.ram, 0.045, 0.020),
+            (&module_levels.cpu, 0.060, 0.035),
+            (&module_levels.gpu, 0.052, 0.030),
+            (&module_levels.ram, 0.055, 0.030),
         ],
     );
     let insight_module_bonus = module_bonus(
         &[
-            (&module_levels.network, 0.036, 0.072),
-            (&module_levels.disk, 0.032, 0.056),
+            (&module_levels.network, 0.052, 0.078),
+            (&module_levels.disk, 0.046, 0.066),
         ],
     );
     let stability = stability_multiplier(settings, snapshot, workshop);
 
     let parts_per_minute = (BASE_PARTS_PER_MINUTE
-        * (0.70 + parts_activity * 1.35)
+        * (0.82 + parts_activity * 1.50)
         * workshop_bonus
         * parts_module_bonus
         * stability)
         .clamp(0.0, 50000.0);
     let insight_per_minute = (BASE_INSIGHT_PER_MINUTE
-        * (0.62 + insight_activity * 1.60)
+        * (0.88 + insight_activity * 1.85)
         * workshop_bonus
         * insight_module_bonus
         * stability)
@@ -176,25 +176,27 @@ fn stability_multiplier(
         snapshot.gpu_temperature_celsius,
         settings.gpu_temperature_warning,
     );
-    let ram_relief = workshop
-        .module_levels
-        .ram
-        .process
-        .max(1)
-        .saturating_sub(1) as f64
-        * 0.025;
-    let cooling_relief = workshop
-        .module_levels
-        .temperature
-        .process
-        .max(1)
-        .saturating_sub(1) as f64
-        * 0.035;
-    let memory_penalty = (memory_over * (0.34 - ram_relief).max(0.10)).clamp(0.0, 0.30);
+    let ram_relief = stability_relief(&workshop.module_levels.ram, 0.003, 0.005, 0.55);
+    let cooling_relief =
+        stability_relief(&workshop.module_levels.temperature, 0.003, 0.0055, 0.58);
+    let memory_penalty_rate = 0.34 * (1.0 - ram_relief).max(0.45);
+    let thermal_penalty_rate = 0.24 * (1.0 - cooling_relief).max(0.42);
+    let memory_penalty = (memory_over * memory_penalty_rate).clamp(0.0, 0.30);
     let thermal_penalty =
-        ((cpu_temp_over + gpu_temp_over) * (0.24 - cooling_relief).max(0.08)).clamp(0.0, 0.42);
+        ((cpu_temp_over + gpu_temp_over) * thermal_penalty_rate).clamp(0.0, 0.42);
 
     (1.0 - memory_penalty - thermal_penalty).clamp(0.35, 1.08)
+}
+
+fn stability_relief(
+    module: &ModuleUpgradeLevels,
+    parts_weight: f64,
+    process_weight: f64,
+    max_relief: f64,
+) -> f64 {
+    (module.parts.max(1).saturating_sub(1) as f64 * parts_weight
+        + module.process.max(1).saturating_sub(1) as f64 * process_weight)
+        .clamp(0.0, max_relief)
 }
 
 fn temperature_overage(value: Option<f32>, warning: f32) -> f64 {
@@ -211,12 +213,14 @@ mod tests {
         WorkshopModuleLevels,
     };
 
-    use super::ProductionService;
+    use super::{calculate_output, ProductionService};
 
     #[test]
     fn production_increases_parts_and_insight_when_not_paused() {
         let settings = AppSettings::default();
         let mut workshop = WorkshopState::default();
+        workshop.parts = 0.0;
+        workshop.insight = 0.0;
         let start = current_timestamp_ms();
         workshop.last_production_time = start;
         let snapshot = HardwareSnapshot {
@@ -244,6 +248,8 @@ mod tests {
         let settings = AppSettings::default();
         let start = current_timestamp_ms();
         let mut idle = WorkshopState::default();
+        idle.parts = 0.0;
+        idle.insight = 0.0;
         idle.last_production_time = start;
         let mut active = idle.clone();
         let active_snapshot = HardwareSnapshot {
@@ -281,6 +287,8 @@ mod tests {
             ..Default::default()
         };
         let mut base = WorkshopState::default();
+        base.parts = 0.0;
+        base.insight = 0.0;
         base.last_production_time = start;
         let mut upgraded = base.clone();
         upgraded.module_levels = WorkshopModuleLevels {
@@ -318,10 +326,126 @@ mod tests {
     }
 
     #[test]
+    fn workshop_level_bonus_applies_to_parts_and_insight_output() {
+        let settings = AppSettings::default();
+        let snapshot = balanced_snapshot();
+        let mut base = WorkshopState::default();
+        base.workshop_level = 1;
+        let mut upgraded = base.clone();
+        upgraded.workshop_level = 6;
+
+        let base_output = calculate_output(&settings, &snapshot, &base);
+        let upgraded_output = calculate_output(&settings, &snapshot, &upgraded);
+
+        assert_close(
+            upgraded_output.parts_per_minute / base_output.parts_per_minute,
+            1.60,
+        );
+        assert_close(
+            upgraded_output.insight_per_minute / base_output.insight_per_minute,
+            1.60,
+        );
+    }
+
+    #[test]
+    fn production_module_bonus_tracks_apply_to_expected_resources() {
+        let settings = AppSettings::default();
+        let snapshot = balanced_snapshot();
+        assert_parts_module_track_effect(&settings, &snapshot, |levels| &mut levels.cpu.parts);
+        assert_parts_module_track_effect(&settings, &snapshot, |levels| &mut levels.cpu.process);
+        assert_parts_module_track_effect(&settings, &snapshot, |levels| &mut levels.gpu.parts);
+        assert_parts_module_track_effect(&settings, &snapshot, |levels| &mut levels.gpu.process);
+        assert_parts_module_track_effect(&settings, &snapshot, |levels| &mut levels.ram.parts);
+        assert_parts_module_track_effect(&settings, &snapshot, |levels| &mut levels.ram.process);
+        assert_insight_module_track_effect(
+            &settings,
+            &snapshot,
+            |levels| &mut levels.network.parts,
+        );
+        assert_insight_module_track_effect(
+            &settings,
+            &snapshot,
+            |levels| &mut levels.network.process,
+        );
+        assert_insight_module_track_effect(&settings, &snapshot, |levels| &mut levels.disk.parts);
+        assert_insight_module_track_effect(
+            &settings,
+            &snapshot,
+            |levels| &mut levels.disk.process,
+        );
+    }
+
+    #[test]
+    fn stability_module_bonus_tracks_apply_to_penalty_scenarios() {
+        let mut settings = AppSettings::default();
+        settings.memory_crowded_threshold = 70.0;
+        settings.cpu_temperature_warning = 70.0;
+        settings.gpu_temperature_warning = 70.0;
+        let snapshot = HardwareSnapshot {
+            cpu_usage_percent: Some(60.0),
+            gpu_usage_percent: Some(40.0),
+            memory_usage_percent: Some(92.0),
+            cpu_temperature_celsius: Some(94.0),
+            gpu_temperature_celsius: Some(92.0),
+            disk_read_bytes_per_second: Some(8.0 * 1024.0 * 1024.0),
+            network_download_bytes_per_second: Some(6.0 * 1024.0 * 1024.0),
+            ..Default::default()
+        };
+
+        assert_stability_module_track_effect(&settings, &snapshot, |levels| {
+            &mut levels.ram.parts
+        });
+        assert_stability_module_track_effect(&settings, &snapshot, |levels| {
+            &mut levels.ram.process
+        });
+        assert_stability_module_track_effect(&settings, &snapshot, |levels| {
+            &mut levels.temperature.parts
+        });
+        assert_stability_module_track_effect(&settings, &snapshot, |levels| {
+            &mut levels.temperature.process
+        });
+    }
+
+    #[test]
+    fn temperature_module_tracks_reduce_thermal_penalty() {
+        let mut settings = AppSettings::default();
+        settings.cpu_temperature_warning = 70.0;
+        settings.gpu_temperature_warning = 70.0;
+        let start = current_timestamp_ms();
+        let snapshot = HardwareSnapshot {
+            cpu_usage_percent: Some(60.0),
+            gpu_usage_percent: Some(40.0),
+            memory_usage_percent: Some(58.0),
+            cpu_temperature_celsius: Some(94.0),
+            gpu_temperature_celsius: Some(92.0),
+            disk_read_bytes_per_second: Some(8.0 * 1024.0 * 1024.0),
+            network_download_bytes_per_second: Some(6.0 * 1024.0 * 1024.0),
+            ..Default::default()
+        };
+        let mut base = WorkshopState::default();
+        base.parts = 0.0;
+        base.insight = 0.0;
+        base.last_production_time = start;
+        let mut upgraded = base.clone();
+        upgraded.module_levels.temperature = ModuleUpgradeLevels {
+            parts: 20,
+            process: 20,
+        };
+
+        ProductionService::apply_tick(&mut base, &settings, &snapshot, start + 10_000);
+        ProductionService::apply_tick(&mut upgraded, &settings, &snapshot, start + 10_000);
+
+        assert!(upgraded.parts > base.parts);
+        assert!(upgraded.insight > base.insight);
+    }
+
+    #[test]
     fn paused_production_updates_time_but_not_resources() {
         let mut settings = AppSettings::default();
         settings.is_production_paused = true;
         let mut workshop = WorkshopState::default();
+        let starting_parts = workshop.parts;
+        let starting_insight = workshop.insight;
         let start = current_timestamp_ms();
         workshop.last_production_time = start;
 
@@ -333,8 +457,87 @@ mod tests {
         );
 
         assert!(changed);
-        assert_eq!(workshop.parts, 0.0);
-        assert_eq!(workshop.insight, 0.0);
+        assert_eq!(workshop.parts, starting_parts);
+        assert_eq!(workshop.insight, starting_insight);
         assert_eq!(workshop.total_online_seconds, 5);
+    }
+
+    fn balanced_snapshot() -> HardwareSnapshot {
+        HardwareSnapshot {
+            cpu_usage_percent: Some(55.0),
+            gpu_usage_percent: Some(45.0),
+            memory_usage_percent: Some(58.0),
+            cpu_temperature_celsius: Some(60.0),
+            gpu_temperature_celsius: Some(62.0),
+            disk_read_bytes_per_second: Some(6.0 * 1024.0 * 1024.0),
+            disk_write_bytes_per_second: Some(2.0 * 1024.0 * 1024.0),
+            network_download_bytes_per_second: Some(4.0 * 1024.0 * 1024.0),
+            network_upload_bytes_per_second: Some(1.0 * 1024.0 * 1024.0),
+            gpu_memory_used_bytes: Some(2 * 1024 * 1024 * 1024),
+            gpu_memory_total_bytes: Some(8 * 1024 * 1024 * 1024),
+            ..Default::default()
+        }
+    }
+
+    fn assert_parts_module_track_effect(
+        settings: &AppSettings,
+        snapshot: &HardwareSnapshot,
+        upgrade_track: fn(&mut WorkshopModuleLevels) -> &mut u32,
+    ) {
+        let base = WorkshopState::default();
+        let mut upgraded = base.clone();
+        *upgrade_track(&mut upgraded.module_levels) = 2;
+
+        let base_output = calculate_output(settings, snapshot, &base);
+        let upgraded_output = calculate_output(settings, snapshot, &upgraded);
+
+        assert!(upgraded_output.parts_per_minute > base_output.parts_per_minute);
+        assert_close(
+            upgraded_output.insight_per_minute / base_output.insight_per_minute,
+            1.0,
+        );
+    }
+
+    fn assert_insight_module_track_effect(
+        settings: &AppSettings,
+        snapshot: &HardwareSnapshot,
+        upgrade_track: fn(&mut WorkshopModuleLevels) -> &mut u32,
+    ) {
+        let base = WorkshopState::default();
+        let mut upgraded = base.clone();
+        *upgrade_track(&mut upgraded.module_levels) = 2;
+
+        let base_output = calculate_output(settings, snapshot, &base);
+        let upgraded_output = calculate_output(settings, snapshot, &upgraded);
+
+        assert_close(
+            upgraded_output.parts_per_minute / base_output.parts_per_minute,
+            1.0,
+        );
+        assert!(upgraded_output.insight_per_minute > base_output.insight_per_minute);
+    }
+
+    fn assert_stability_module_track_effect(
+        settings: &AppSettings,
+        snapshot: &HardwareSnapshot,
+        upgrade_track: fn(&mut WorkshopModuleLevels) -> &mut u32,
+    ) {
+        let base = WorkshopState::default();
+        let mut upgraded = base.clone();
+        *upgrade_track(&mut upgraded.module_levels) = 2;
+
+        let base_output = calculate_output(settings, snapshot, &base);
+        let upgraded_output = calculate_output(settings, snapshot, &upgraded);
+
+        assert!(upgraded_output.parts_per_minute > base_output.parts_per_minute);
+        assert!(upgraded_output.insight_per_minute > base_output.insight_per_minute);
+    }
+
+    fn assert_close(actual: f64, expected: f64) {
+        let delta = (actual - expected).abs();
+        assert!(
+            delta < 0.000_001,
+            "expected {actual} to be close to {expected}, delta {delta}"
+        );
     }
 }

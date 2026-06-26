@@ -546,10 +546,10 @@ export function SettingsPage() {
                 <PixelIcon name="shield" size={14} style={{ marginRight: "6px" }} /> 安全与隐私
               </div>
               <div className="cwp-safety-notes-box" style={{ padding: "4px 6px", gap: "2px" }}>
-                <div className="cwp-safety-note-item">轻量级程序大小</div>
+                <div className="cwp-safety-note-item">轻量级绿色程序</div>
                 <div className="cwp-safety-note-item">纯本地离线运行</div>
                 <div className="cwp-safety-note-item">无后台隐蔽占用</div>
-                <div className="cwp-safety-note-item">不涉及区块链挖矿</div>
+                <div className="cwp-safety-note-item">不上传任何数据</div>
               </div>
             </div>
           </div>

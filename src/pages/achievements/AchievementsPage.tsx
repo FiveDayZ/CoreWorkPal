@@ -62,14 +62,33 @@ export function AchievementsPage() {
   const [selectedDetailCard, setSelectedDetailCard] =
     useState<AchievementCard | null>(null);
   const [exportHint, setExportHint] = useState<string | null>(null);
+  const [viewedUnreadCount, setViewedUnreadCount] = useState<number | null>(null);
   const exportHintTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    void Promise.all([loadSummary(), loadCards()])
-      .then(() => markNotificationsSeen())
-      .catch((error) => {
+    let disposed = false;
+
+    void (async () => {
+      const loadedSummary = await loadSummary();
+      await loadCards();
+
+      if (disposed) {
+        return;
+      }
+
+      const unreadCount = loadedSummary.pendingNotificationCount;
+      setViewedUnreadCount((current) => Math.max(current ?? 0, unreadCount));
+
+      if (unreadCount > 0) {
+        await markNotificationsSeen();
+      }
+    })().catch((error) => {
         console.error("Failed to load achievement gallery", error);
       });
+
+    return () => {
+      disposed = true;
+    };
   }, [loadCards, loadSummary, markNotificationsSeen]);
 
   useEffect(() => {
@@ -148,6 +167,10 @@ export function AchievementsPage() {
     null;
   const totalAchievementCount =
     (summary?.visibleTotalCount ?? 0) + (summary?.hiddenTotalCount ?? 0);
+  const newPromptCount = Math.max(
+    viewedUnreadCount ?? 0,
+    summary?.pendingNotificationCount ?? 0,
+  );
 
   function showExportHint(message: string) {
     if (exportHintTimerRef.current !== null) {
@@ -249,8 +272,8 @@ export function AchievementsPage() {
         />
         <SummaryTile label="当前筛选" value={`${visibleCards.length} 项`} />
         <SummaryTile
-          label="未读提示"
-          value={`${summary?.pendingNotificationCount ?? 0}`}
+          label="新解锁提示"
+          value={`${newPromptCount}`}
         />
       </section>
 

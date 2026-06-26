@@ -3,10 +3,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use sysinfo::{Components, Networks, System};
+use sysinfo::{Components, Networks, ProcessRefreshKind, System, UpdateKind};
 
 use crate::{
-    models::{current_timestamp_ms, HardwareDeviceInventory, HardwareSnapshot},
+    models::{
+        current_timestamp_ms, HardwareDeviceInventory, HardwareSnapshot, ProcessUsageSnapshot,
+    },
     monitoring::HardwareSensorAdapter,
 };
 
@@ -114,6 +116,69 @@ impl SysinfoAdapter {
 
         self.cached_nvidia_sample.clone()
     }
+
+    fn sample_processes(&mut self, elapsed_seconds: f32) -> Vec<ProcessUsageSnapshot> {
+        self.system.refresh_processes_specifics(
+            ProcessRefreshKind::new()
+                .with_cpu()
+                .with_memory()
+                .with_disk_usage()
+                .with_exe(UpdateKind::OnlyIfNotSet),
+        );
+
+        let current_pid = std::process::id();
+        let elapsed = elapsed_seconds.max(0.001);
+        let mut processes = self
+            .system
+            .processes()
+            .iter()
+            .filter_map(|(pid, process)| {
+                let pid = pid.as_u32();
+                if pid == current_pid || pid <= 4 {
+                    return None;
+                }
+
+                let name = process.name().trim();
+                if name.is_empty() || should_skip_process_name(name) {
+                    return None;
+                }
+
+                let disk_usage = process.disk_usage();
+                let disk_read_bytes_per_second = (disk_usage.read_bytes > 0)
+                    .then_some(disk_usage.read_bytes as f32 / elapsed);
+                let disk_write_bytes_per_second = (disk_usage.written_bytes > 0)
+                    .then_some(disk_usage.written_bytes as f32 / elapsed);
+                let disk_rate = disk_read_bytes_per_second.unwrap_or(0.0)
+                    + disk_write_bytes_per_second.unwrap_or(0.0);
+                let cpu_usage_percent = process.cpu_usage().max(0.0);
+                let memory_bytes = process.memory();
+
+                if cpu_usage_percent < 0.2
+                    && memory_bytes < 32 * 1024 * 1024
+                    && disk_rate < 8.0 * 1024.0
+                {
+                    return None;
+                }
+
+                Some(ProcessUsageSnapshot {
+                    pid,
+                    name: name.to_string(),
+                    cpu_usage_percent,
+                    memory_bytes,
+                    disk_read_bytes_per_second,
+                    disk_write_bytes_per_second,
+                })
+            })
+            .collect::<Vec<_>>();
+
+        processes.sort_by(|left, right| {
+            process_snapshot_score(right)
+                .total_cmp(&process_snapshot_score(left))
+                .then_with(|| right.memory_bytes.cmp(&left.memory_bytes))
+        });
+        processes.truncate(32);
+        processes
+    }
 }
 
 impl HardwareSensorAdapter for SysinfoAdapter {
@@ -137,6 +202,7 @@ impl HardwareSensorAdapter for SysinfoAdapter {
         let (network_download_bytes_per_second, network_upload_bytes_per_second) =
             self.sample_network_bytes_per_second(elapsed_seconds);
         let nvidia_sample = self.sample_nvidia_smi();
+        let processes = self.sample_processes(elapsed_seconds);
 
         #[cfg(windows)]
         let performance_sample = self
@@ -206,8 +272,26 @@ impl HardwareSensorAdapter for SysinfoAdapter {
             cpu_physical_core_count: self.system.physical_core_count().map(|count| count as u32),
             cpu_logical_core_count: Some(self.system.cpus().len() as u32),
             device_inventory: self.cached_device_inventory.clone(),
+            processes,
         }
     }
+}
+
+fn process_snapshot_score(process: &ProcessUsageSnapshot) -> f32 {
+    let disk_rate = process.disk_read_bytes_per_second.unwrap_or(0.0)
+        + process.disk_write_bytes_per_second.unwrap_or(0.0);
+
+    process.cpu_usage_percent * 2.0
+        + process.memory_bytes as f32 / (128.0 * 1024.0 * 1024.0)
+        + disk_rate / (1024.0 * 1024.0)
+}
+
+fn should_skip_process_name(name: &str) -> bool {
+    let normalized = name.to_ascii_lowercase();
+    normalized.contains("coreworkpal")
+        || normalized.contains("core-work-pal")
+        || normalized == "system idle process"
+        || normalized == "idle"
 }
 
 #[derive(Debug, Clone, Default)]

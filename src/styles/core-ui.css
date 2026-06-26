@@ -4995,6 +4995,161 @@ label {
   border-color: rgba(255, 116, 94, 0.42);
 }
 
+.cwp-process-panel {
+  min-width: 0;
+  border: 2px solid var(--color-border-soft);
+  background: var(--color-bg-850);
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+}
+
+.cwp-process-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cwp-process-summary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 9px;
+}
+
+.cwp-process-summary strong {
+  min-width: 0;
+  max-width: 180px;
+  color: var(--color-brand-orange-strong);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cwp-process-summary em {
+  color: var(--color-tech-cyan);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-style: normal;
+}
+
+.cwp-process-empty {
+  border: 1px dashed rgba(94, 208, 255, 0.28);
+  background: rgba(94, 208, 255, 0.04);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 8px;
+}
+
+.cwp-process-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cwp-process-card {
+  min-width: 0;
+  border: 1px solid rgba(94, 208, 255, 0.18);
+  background: rgba(6, 12, 20, 0.36);
+  padding: 6px;
+  display: grid;
+  gap: 5px;
+}
+
+.cwp-process-card.is-positive {
+  border-color: rgba(94, 208, 255, 0.36);
+}
+
+.cwp-process-card.is-warning {
+  border-color: rgba(255, 116, 94, 0.44);
+}
+
+.cwp-process-card-head {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.cwp-process-card-head span {
+  color: var(--color-tech-cyan);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.cwp-process-card-head strong {
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cwp-process-card-head em {
+  color: var(--color-brand-orange-strong);
+  font-size: 8px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.cwp-process-card p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.cwp-process-metrics {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+}
+
+.cwp-process-metrics div {
+  min-width: 0;
+  border: 1px solid rgba(94, 208, 255, 0.12);
+  background: rgba(0, 0, 0, 0.16);
+  padding: 3px 4px;
+}
+
+.cwp-process-metrics dt {
+  color: var(--color-text-muted);
+  font-size: 7px;
+}
+
+.cwp-process-metrics dd {
+  margin: 1px 0 0;
+  color: var(--color-tech-cyan);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cwp-process-bar {
+  height: 4px;
+  background: rgba(94, 208, 255, 0.1);
+  overflow: hidden;
+}
+
+.cwp-process-bar span {
+  display: block;
+  height: 100%;
+  background: var(--color-brand-orange);
+}
+
 .cwp-worklog-layout.cwp-worklog-layout-assessment {
   height: auto;
   grid-template-rows: 102px minmax(156px, auto);

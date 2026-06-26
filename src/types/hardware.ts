@@ -21,6 +21,16 @@ export interface HardwareMetricsSnapshot {
 
 export interface HardwareSnapshot extends HardwareMetricsSnapshot {
   deviceInventory: HardwareDeviceInventory;
+  processes: ProcessUsageSnapshot[];
+}
+
+export interface ProcessUsageSnapshot {
+  pid: number;
+  name: string;
+  cpuUsagePercent: number;
+  memoryBytes: number;
+  diskReadBytesPerSecond: number | null;
+  diskWriteBytesPerSecond: number | null;
 }
 
 export interface HardwareDeviceInventory {

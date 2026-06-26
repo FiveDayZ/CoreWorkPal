@@ -58,8 +58,8 @@ const browserSettings: AppSettings = {
 
 const browserWorkshop: WorkshopState = {
   schemaVersion: 1,
-  parts: 0,
-  insight: 0,
+  parts: 280,
+  insight: 12,
   workshopLevel: 1,
   catAffinityLevel: 1,
   moduleLevels: defaultModuleLevels,
@@ -98,6 +98,7 @@ const browserSnapshot: HardwareSnapshot = {
     audioDevices: [],
     networkAdapters: [],
   },
+  processes: [],
 };
 
 const browserAchievements: AchievementCard[] = [
@@ -325,7 +326,7 @@ function createBrowserWorkLogReport(date = todayKey()): WorkLogReport {
         value: date === todayKey() ? "1.0h" : "0.0h",
         explanation: "按当日 CoreCat 连续在线与生产观察时长折算。",
         facts: [
-          { label: "运行时长", value: date === todayKey() ? "1h 0m" : "0s" },
+          { label: "运行时长", value: date === todayKey() ? "1h 0m" : "0h 0m" },
           { label: "采样记录", value: date === todayKey() ? "60 次" : "0 次" },
         ],
       },
@@ -337,9 +338,9 @@ function createBrowserWorkLogReport(date = todayKey()): WorkLogReport {
         value: "CPU 42% / RAM 60% / GPU 0%",
         explanation: "综合平均负载与 CPU>50%、RAM>70%、GPU>70% 的持续时长。",
         facts: [
-          { label: "CPU>50%", value: "18m 0s" },
-          { label: "RAM>70%", value: "6m 0s" },
-          { label: "GPU>70%", value: "0s" },
+          { label: "CPU>50%", value: "0h 18m" },
+          { label: "RAM>70%", value: "0h 6m" },
+          { label: "GPU>70%", value: "0h 0m" },
         ],
       },
       {
@@ -364,8 +365,8 @@ function createBrowserWorkLogReport(date = todayKey()): WorkLogReport {
         value: "压力 20%",
         explanation: "高温持续时间越短，说明高强度工作下系统越稳定。",
         facts: [
-          { label: "CPU>80C", value: "0s" },
-          { label: "GPU>80C", value: "0s" },
+          { label: "CPU>80C", value: "0h 0m" },
+          { label: "GPU>80C", value: "0h 0m" },
         ],
       },
       {
@@ -539,6 +540,55 @@ function createBrowserDailyWorkAssessment(date = todayKey()): DailyWorkAssessmen
         metricValue: null,
       },
     ],
+    processInsights: isToday
+      ? [
+          {
+            name: "Code.exe",
+            observedSeconds: 3540,
+            activeSeconds: 1800,
+            sampleCount: 59,
+            activeSampleCount: 30,
+            cpuPressurePercent: 18,
+            averageMemoryBytes: 880 * 1024 * 1024,
+            memoryBytesPeak: 1120 * 1024 * 1024,
+            diskReadBytesTotal: 180 * 1024 * 1024,
+            diskWriteBytesTotal: 92 * 1024 * 1024,
+            rankLabel: "长驻后台",
+            summary: "长驻后台：驻留 0h 59m，活跃 0h 30m，CPU 压力约 18%，内存峰值 1.1 GB。",
+            severity: "positive",
+          },
+          {
+            name: "chrome.exe",
+            observedSeconds: 3300,
+            activeSeconds: 1260,
+            sampleCount: 55,
+            activeSampleCount: 21,
+            cpuPressurePercent: 11,
+            averageMemoryBytes: 1340 * 1024 * 1024,
+            memoryBytesPeak: 1800 * 1024 * 1024,
+            diskReadBytesTotal: 68 * 1024 * 1024,
+            diskWriteBytesTotal: 24 * 1024 * 1024,
+            rankLabel: "内存常驻",
+            summary: "内存常驻：驻留 0h 55m，活跃 0h 21m，CPU 压力约 11%，内存峰值 1.8 GB。",
+            severity: "neutral",
+          },
+          {
+            name: "node.exe",
+            observedSeconds: 1680,
+            activeSeconds: 900,
+            sampleCount: 28,
+            activeSampleCount: 15,
+            cpuPressurePercent: 44,
+            averageMemoryBytes: 420 * 1024 * 1024,
+            memoryBytesPeak: 520 * 1024 * 1024,
+            diskReadBytesTotal: 360 * 1024 * 1024,
+            diskWriteBytesTotal: 160 * 1024 * 1024,
+            rankLabel: "CPU 压力源",
+            summary: "CPU 压力源：驻留 0h 28m，活跃 0h 15m，CPU 压力约 44%，内存峰值 520.0 MB。",
+            severity: "warning",
+          },
+        ]
+      : [],
     dimensions: report.dimensions.map((dimension) => ({
       ...dimension,
       title: mapAssessmentDimensionTitle(dimension.key, dimension.title),

@@ -5,10 +5,11 @@ import type {
   DailyWorkAssessment,
   DailyWorkAssessmentSummary,
   DailyWorkAssessmentTrend,
+  ProcessUsageInsight,
   WorkTimelineSegment,
 } from "../../types/dailyWorkAssessment";
 import type { WorkLogReport } from "../../types/workLog";
-import { formatDuration } from "../../services/formatters";
+import { formatBytes, formatDuration } from "../../services/formatters";
 import { trackAchievementEvent } from "../../services/tauriCommands";
 import { useWorkLogStore } from "../../stores/workLogStore";
 import { PixelIcon, type PixelIconName } from "../../ui/PixelIcon";
@@ -68,7 +69,7 @@ const workLogTabs: Array<{ id: WorkLogTab; label: string }> = [
   { id: "trend", label: "趋势" },
   { id: "workprint", label: "指纹" },
   { id: "timeline", label: "时间线" },
-  { id: "insights", label: "洞察" },
+  { id: "insights", label: "进程" },
   { id: "dimensions", label: "五维" },
 ];
 
@@ -268,7 +269,9 @@ export function WorkLogPage() {
           </section>
         )}
 
-        {activeTab === "trend" && <WorkTrendPanel trend={assessmentTrend} />}
+        {activeTab === "trend" && (
+          <WorkTrendPanel assessment={currentAssessment} trend={assessmentTrend} />
+        )}
 
         {activeTab === "workprint" && (
           <WorkprintAndBaseline
@@ -287,7 +290,7 @@ export function WorkLogPage() {
         )}
 
         {activeTab === "insights" && (
-          <AssessmentInsightGrid assessment={currentAssessment} />
+          <ProcessInsightPanel assessment={currentAssessment} />
         )}
 
         {activeTab === "dimensions" && (
@@ -364,7 +367,7 @@ function RarityMetricsPanel({ reason }: { reason?: string }) {
     <div className="cwp-rarity-metrics-row">
       <div className="cwp-rarity-metric-card" title="当前工况下的工作画像综合评分">
         <span className="metric-icon">
-          <PixelIcon name="dashboard" size={14} style={{ color: "var(--color-insight-gold)" }} />
+          <PixelIcon name="workScore" size={14} style={{ color: "var(--color-insight-gold)" }} />
         </span>
         <div className="metric-content">
           <span className="metric-label">画像评分</span>
@@ -892,61 +895,69 @@ function WorkDimensionPanel({
 }
 
 function WorkTrendPanel({
+  assessment,
   trend,
 }: {
+  assessment: DailyWorkAssessment | null;
   trend: DailyWorkAssessmentTrend | null;
 }) {
   if (!trend || trend.sampleDays === 0) {
     return (
-      <section className="cwp-trend-card">
-        <div className="cwp-section-title">
-          <PixelIcon name="energy" size={14} />
-          <strong>近 14 日趋势洞察</strong>
-        </div>
-        <div className="cwp-trend-empty">
-          CoreCat 还没有足够的历史日报。连续使用几天后，这里会显示近期主导形态、最高画像日和节奏线覆盖。
-        </div>
-      </section>
+      <>
+        <section className="cwp-trend-card">
+          <div className="cwp-section-title">
+            <PixelIcon name="energy" size={14} />
+            <strong>近 14 日趋势洞察</strong>
+          </div>
+          <div className="cwp-trend-empty">
+            CoreCat 还没有足够的历史日报。连续使用几天后，这里会显示近期主导形态、最高画像日和节奏线覆盖。
+          </div>
+        </section>
+        <AssessmentInsightGrid assessment={assessment} />
+      </>
     );
   }
 
   return (
-    <section className={`cwp-trend-card is-${trend.dominantDayType}`}>
-      <div className="cwp-section-title">
-        <PixelIcon name="energy" size={14} />
-        <strong>近 14 日趋势洞察</strong>
-      </div>
-      <div className="cwp-trend-head">
-        <div className="cwp-trend-copy">
-          <span>CoreCat Trend</span>
-          <p>{trend.summary}</p>
+    <>
+      <section className={`cwp-trend-card is-${trend.dominantDayType}`}>
+        <div className="cwp-section-title">
+          <PixelIcon name="energy" size={14} />
+          <strong>近 14 日趋势洞察</strong>
         </div>
-        <div className="cwp-trend-stat-grid">
-          <TrendStat label="样本" value={`${trend.sampleDays} 天`} />
-          <TrendStat label="平均" value={`${trend.averageScore}`} />
-          <TrendStat
-            label="最高"
-            subValue={trend.bestDate ? formatDateLabel(trend.bestDate) : "--"}
-            value={trend.bestScore !== null ? `${trend.bestScore}` : "--"}
-          />
-          <TrendStat label="首尾" value={formatScoreDelta(trend.scoreDelta)} />
+        <div className="cwp-trend-head">
+          <div className="cwp-trend-copy">
+            <span>CoreCat Trend</span>
+            <p>{trend.summary}</p>
+          </div>
+          <div className="cwp-trend-stat-grid">
+            <TrendStat label="样本" value={`${trend.sampleDays} 天`} />
+            <TrendStat label="平均" value={`${trend.averageScore}`} />
+            <TrendStat
+              label="最高"
+              subValue={trend.bestDate ? formatDateLabel(trend.bestDate) : "--"}
+              value={trend.bestScore !== null ? `${trend.bestScore}` : "--"}
+            />
+            <TrendStat label="首尾" value={formatScoreDelta(trend.scoreDelta)} />
+          </div>
         </div>
-      </div>
-      <div className="cwp-trend-insight-grid">
-        {trend.insights.slice(0, 3).map((item) => (
-          <article
-            className={`cwp-trend-insight is-${item.severity}`}
-            key={`${item.title}-${item.metricValue ?? ""}`}
-          >
-            <div>
-              <strong>{item.title}</strong>
-              {item.metricValue ? <span>{item.metricValue}</span> : null}
-            </div>
-            <p>{item.body}</p>
-          </article>
-        ))}
-      </div>
-    </section>
+        <div className="cwp-trend-insight-grid">
+          {trend.insights.slice(0, 3).map((item) => (
+            <article
+              className={`cwp-trend-insight is-${item.severity}`}
+              key={`${item.title}-${item.metricValue ?? ""}`}
+            >
+              <div>
+                <strong>{item.title}</strong>
+                {item.metricValue ? <span>{item.metricValue}</span> : null}
+              </div>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+      <AssessmentInsightGrid assessment={assessment} />
+    </>
   );
 }
 
@@ -1070,6 +1081,114 @@ function BaselinePill({
   );
 }
 
+function ProcessInsightPanel({
+  assessment,
+}: {
+  assessment: DailyWorkAssessment | null;
+}) {
+  const processes = assessment?.processInsights ?? [];
+
+  if (processes.length === 0) {
+    return (
+      <section className="cwp-process-panel">
+        <div className="cwp-section-title">
+          <PixelIcon name="processPortrait" size={14} />
+          <strong>后台进程画像</strong>
+        </div>
+        <div className="cwp-process-empty">
+          CoreCat 还没有积累到可分析的进程采样。保持 Tauri 版本运行一段时间后，这里会展示驻留时间、活跃频率和资源占用最高的后台进程。
+        </div>
+      </section>
+    );
+  }
+
+  const topProcess = processes[0];
+  const activeTotal = processes.reduce(
+    (sum, process) => sum + process.activeSeconds,
+    0,
+  );
+
+  return (
+    <section className="cwp-process-panel">
+      <div className="cwp-process-head">
+        <div className="cwp-section-title">
+          <PixelIcon name="processPortrait" size={14} />
+          <strong>后台进程画像</strong>
+        </div>
+        <div className="cwp-process-summary">
+          <span>最高贡献</span>
+          <strong>{topProcess.name}</strong>
+          <em>{formatDuration(activeTotal)} 活跃</em>
+        </div>
+      </div>
+
+      <div className="cwp-process-grid">
+        {processes.map((process, index) => (
+          <ProcessInsightCard
+            key={`${process.name}-${index}`}
+            process={process}
+            rank={index + 1}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ProcessInsightCard({
+  process,
+  rank,
+}: {
+  process: ProcessUsageInsight;
+  rank: number;
+}) {
+  const diskTotal = process.diskReadBytesTotal + process.diskWriteBytesTotal;
+  const activeRatio =
+    process.observedSeconds > 0
+      ? Math.round((process.activeSeconds / process.observedSeconds) * 100)
+      : 0;
+
+  return (
+    <article className={`cwp-process-card is-${process.severity}`}>
+      <div className="cwp-process-card-head">
+        <span>#{rank}</span>
+        <strong title={process.name}>{process.name}</strong>
+        <em>{process.rankLabel}</em>
+      </div>
+      <p>{process.summary}</p>
+      <dl className="cwp-process-metrics">
+        <div>
+          <dt>驻留</dt>
+          <dd>{formatDuration(process.observedSeconds)}</dd>
+        </div>
+        <div>
+          <dt>活跃</dt>
+          <dd>{formatDuration(process.activeSeconds)}</dd>
+        </div>
+        <div>
+          <dt>频率</dt>
+          <dd>{process.activeSampleCount}/{process.sampleCount}</dd>
+        </div>
+        <div>
+          <dt>CPU</dt>
+          <dd>{Math.round(process.cpuPressurePercent)}%</dd>
+        </div>
+        <div>
+          <dt>内存峰值</dt>
+          <dd>{formatBytes(process.memoryBytesPeak)}</dd>
+        </div>
+        <div>
+          <dt>磁盘</dt>
+          <dd>{formatBytes(diskTotal)}</dd>
+        </div>
+      </dl>
+      <div className="cwp-process-bar">
+        <span style={{ width: `${Math.min(100, activeRatio)}%` }} />
+      </div>
+    </article>
+  );
+}
+
 function InsightColumn({
   icon,
   items,
@@ -1153,6 +1272,7 @@ function buildReportCardExportText({
     ...formatInsightLines("隐患", assessment?.risks ?? []),
     ...formatInsightLines("建议", assessment?.suggestions ?? []),
   ];
+  const processLines = formatProcessLines(assessment?.processInsights ?? []);
   const dimensionLines = dimensions.map(
     (dimension) =>
       `- ${dimension.title}: ${dimension.score}/${dimension.maxScore} (${dimension.value})`,
@@ -1185,6 +1305,9 @@ function buildReportCardExportText({
     "洞察",
     ...(insightLines.length > 0 ? insightLines : ["- 暂无洞察"]),
     "",
+    "后台进程画像",
+    ...(processLines.length > 0 ? processLines : ["- 暂无进程画像"]),
+    "",
     "MVP 片段",
     ...(assessment?.mvpSegments.length
       ? assessment.mvpSegments.map(
@@ -1205,6 +1328,17 @@ function formatInsightLines(prefix: string, items: AssessmentInsight[]) {
   return items.map((item) => {
     const metric = item.metricValue ? ` ${item.metricValue}` : "";
     return `- ${prefix} / ${item.title}${metric}: ${item.body}`;
+  });
+}
+
+function formatProcessLines(items: ProcessUsageInsight[]) {
+  return items.map((item, index) => {
+    const diskTotal = item.diskReadBytesTotal + item.diskWriteBytesTotal;
+    return `- #${index + 1} ${item.name} / ${item.rankLabel}: 驻留 ${formatDuration(
+      item.observedSeconds,
+    )}，活跃 ${formatDuration(item.activeSeconds)}，活跃采样 ${item.activeSampleCount}/${item.sampleCount}，CPU ${Math.round(
+      item.cpuPressurePercent,
+    )}%，内存峰值 ${formatBytes(item.memoryBytesPeak)}，磁盘 ${formatBytes(diskTotal)}`;
   });
 }
 

@@ -1,7 +1,7 @@
 use crate::{
     models::{
         current_timestamp_ms, HardwareDeviceInfo, HardwareDeviceInventory, HardwareSnapshot,
-        MemoryModuleInfo,
+        MemoryModuleInfo, ProcessUsageSnapshot,
     },
     monitoring::HardwareSensorAdapter,
 };
@@ -43,6 +43,32 @@ impl HardwareSensorAdapter for FakeHardwareSensorAdapter {
             cpu_physical_core_count: Some(8),
             cpu_logical_core_count: Some(16),
             device_inventory: fake_device_inventory(),
+            processes: vec![
+                ProcessUsageSnapshot {
+                    pid: 3200,
+                    name: "Code.exe".to_string(),
+                    cpu_usage_percent: 12.0 + wave * 0.3,
+                    memory_bytes: 980 * 1024 * 1024,
+                    disk_read_bytes_per_second: Some(48_000.0 + wave * 2000.0),
+                    disk_write_bytes_per_second: Some(24_000.0 + wave * 1000.0),
+                },
+                ProcessUsageSnapshot {
+                    pid: 4488,
+                    name: "chrome.exe".to_string(),
+                    cpu_usage_percent: 8.0 + wave * 0.2,
+                    memory_bytes: 1536 * 1024 * 1024,
+                    disk_read_bytes_per_second: Some(18_000.0),
+                    disk_write_bytes_per_second: Some(9_000.0),
+                },
+                ProcessUsageSnapshot {
+                    pid: 6120,
+                    name: "node.exe".to_string(),
+                    cpu_usage_percent: if self.tick % 8 < 3 { 58.0 } else { 4.0 },
+                    memory_bytes: 420 * 1024 * 1024,
+                    disk_read_bytes_per_second: Some(256_000.0),
+                    disk_write_bytes_per_second: Some(96_000.0),
+                },
+            ],
         }
     }
 }

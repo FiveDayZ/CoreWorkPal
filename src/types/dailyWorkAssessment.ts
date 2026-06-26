@@ -67,6 +67,22 @@ export interface AssessmentInsight {
   metricValue?: string | null;
 }
 
+export interface ProcessUsageInsight {
+  name: string;
+  observedSeconds: number;
+  activeSeconds: number;
+  sampleCount: number;
+  activeSampleCount: number;
+  cpuPressurePercent: number;
+  averageMemoryBytes: number;
+  memoryBytesPeak: number;
+  diskReadBytesTotal: number;
+  diskWriteBytesTotal: number;
+  rankLabel: string;
+  summary: string;
+  severity: InsightSeverity;
+}
+
 export interface WorkCardRarity {
   tier: "C" | "B" | "A" | "S" | "SS" | string;
   label: string;
@@ -102,6 +118,7 @@ export interface DailyWorkAssessment {
   highlights: AssessmentInsight[];
   risks: AssessmentInsight[];
   suggestions: AssessmentInsight[];
+  processInsights: ProcessUsageInsight[];
   dimensions: WorkLogScoreDimension[];
   score: number;
   corecatSummary: string;

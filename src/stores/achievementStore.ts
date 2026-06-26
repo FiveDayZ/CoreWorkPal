@@ -15,10 +15,10 @@ export interface AchievementStore {
   summary: AchievementSummary | null;
   cards: AchievementCard[];
   unlockQueue: AchievementUnlockedEvent[];
-  loadSummary: () => Promise<void>;
+  loadSummary: () => Promise<AchievementSummary>;
   loadCards: () => Promise<void>;
   pushUnlocked: (event: AchievementUnlockedEvent) => void;
-  markNotificationsSeen: (unlockIds?: string[]) => Promise<void>;
+  markNotificationsSeen: (unlockIds?: string[]) => Promise<AchievementSummary>;
   dismissUnlocked: (unlockId: string) => void;
 }
 
@@ -75,6 +75,7 @@ export const useAchievementStore = create<AchievementStore>((set) => ({
   loadSummary: async () => {
     const summary = await getAchievementSummary();
     set({ summary });
+    return summary;
   },
   loadCards: async () => {
     const cards = await listAchievements(true);
@@ -140,6 +141,7 @@ export const useAchievementStore = create<AchievementStore>((set) => ({
   markNotificationsSeen: async (unlockIds) => {
     const summary = await markAchievementNotificationsSeen(unlockIds);
     set({ summary });
+    return summary;
   },
   dismissUnlocked: (unlockId) =>
     set((state) => ({

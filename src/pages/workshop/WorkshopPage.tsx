@@ -44,6 +44,8 @@ interface ModuleData {
 
 const MAX_WORKSHOP_LEVEL = 100;
 const MAX_MODULE_SUB_LEVEL = 100;
+const BASE_PARTS_PER_MINUTE = 1.6;
+const BASE_INSIGHT_PER_MINUTE = 0.13;
 const ECONOMY_REFERENCE_PARTS_PER_HOUR = 115;
 const ECONOMY_REFERENCE_INSIGHT_PER_HOUR = 6.8;
 const MODULE_PARTS_UPGRADE_PARTS_WEIGHT = 1.15;
@@ -418,9 +420,9 @@ function buildModules(
       metricVal: formatPercent(cpu),
       progress: percentProgress(cpu),
       statZh: cpu != null && cpu > 85 ? "状态: 高负载" : "状态: 良好",
-      statEn: `零件 +${moduleBonus(levels.cpu, 5.0, 2.5)}%`,
+      statEn: `零件 +${moduleBonus(levels.cpu, 6.0, 3.5)}%`,
       partsRule: "提升 CPU 对零件产出的转化率。",
-      processRule: "降低高负载下的产出抖动。",
+      processRule: "提高高负载作业的零件转化效率。",
       resourceKind: "parts",
       resourceRateText: formatResourceRate(cpuPartsPace, "parts"),
     },
@@ -434,7 +436,7 @@ function buildModules(
       metricVal: formatGpuMetric(snapshot),
       progress: percentProgress(gpu),
       statZh: gpu != null && gpu > 75 ? "状态: 渲染中" : "状态: 待命",
-      statEn: `零件 +${moduleBonus(levels.gpu, 4.0, 2.0)}%`,
+      statEn: `零件 +${moduleBonus(levels.gpu, 5.2, 3.0)}%`,
       partsRule: "提高渲染平台对零件打磨的辅助效率。",
       processRule: "提高 GPU 对零件的产出率。",
       resourceKind: "parts",
@@ -453,7 +455,7 @@ function buildModules(
         ram != null && ram > (settings?.memoryCrowdedThreshold ?? 82)
           ? "状态: 拥挤"
           : "状态: 良好",
-      statEn: `零件 +${moduleBonus(levels.ram, 4.5, 2.0)}%`,
+      statEn: `零件 +${moduleBonus(levels.ram, 5.5, 3.0)}%`,
       partsRule: "扩大零件仓储吞吐，提升 RAM 对产出的贡献。",
       processRule: "缓解内存拥挤惩罚，保持产出稳定。",
       resourceKind: "parts",
@@ -469,7 +471,7 @@ function buildModules(
       metricVal: `${formatBytesPerSecond(snapshot?.networkDownloadBytesPerSecond ?? null)} / ${formatBytesPerSecond(snapshot?.networkUploadBytesPerSecond ?? null)}`,
       progress: throughputProgress(networkBytes),
       statZh: networkBytes > 1024 * 1024 ? "状态: 流畅" : "状态: 低流量",
-      statEn: `灵感 +${moduleBonus(levels.network, 3.6, 7.2)}%`,
+      statEn: `灵感 +${moduleBonus(levels.network, 5.2, 7.8)}%`,
       partsRule: "提升网络物流对灵感获取的贡献。",
       processRule: "提升网络蓝图交换带来的灵感。",
       resourceKind: "insight",
@@ -485,7 +487,7 @@ function buildModules(
       metricVal: formatTemperature(maxTemp > 0 ? maxTemp : null),
       progress: clamp((maxTemp / tempWarning) * 100, 0, 100),
       statZh: maxTemp > tempWarning ? "状态: 过热" : "状态: 安全",
-      statEn: `稳定 +${moduleBonus(levels.temperature, 2.0, 3.5)}%`,
+      statEn: `稳定 +${moduleBonus(levels.temperature, 3.0, 5.5)}%`,
       partsRule: "提升散热组件耐久，减少零件产出损耗。",
       processRule: "降低温度惩罚，保持灵感稳定。",
       resourceKind: "parts",
@@ -501,7 +503,7 @@ function buildModules(
       metricVal: `${formatBytesPerSecond(snapshot?.diskReadBytesPerSecond ?? null)} / ${formatBytesPerSecond(snapshot?.diskWriteBytesPerSecond ?? null)}`,
       progress: throughputProgress(diskBytes),
       statZh: diskBytes > 1024 * 1024 ? "状态: 归档中" : "状态: 安静",
-      statEn: `灵感 +${moduleBonus(levels.disk, 3.2, 5.6)}%`,
+      statEn: `灵感 +${moduleBonus(levels.disk, 4.6, 6.6)}%`,
       partsRule: "提高归档读写对灵感整理的收益。",
       processRule: "提升数据归档带来的灵感回收。",
       resourceKind: "insight",
@@ -512,8 +514,7 @@ function buildModules(
 
 function getWorkshopUpgradeCost(level: number): ResourceCost {
   const safeLevel = Math.max(1, level);
-  const targetHours =
-    3.2 + safeLevel * 1.9 + Math.pow(safeLevel, 1.62) * 1.05;
+  const targetHours = getWorkshopTargetHours(safeLevel);
 
   return {
     parts: Math.round(ECONOMY_REFERENCE_PARTS_PER_HOUR * targetHours),
@@ -528,11 +529,7 @@ function getSubCost(
 ): ResourceCost {
   const safeLevel = Math.max(1, level);
   const safeWorkshopLevel = Math.max(1, workshopLevel);
-  const targetHours =
-    2.5 +
-    safeLevel * 1.35 +
-    Math.pow(safeLevel, 1.55) * 0.85 +
-    safeWorkshopLevel * 0.38;
+  const targetHours = getModuleTargetHours(safeLevel, safeWorkshopLevel);
 
   if (type === "parts") {
     return {
@@ -567,6 +564,28 @@ function getSubCost(
       ),
     ),
   };
+}
+
+function getWorkshopTargetHours(level: number) {
+  const baseHours = 0.85 + level * 0.45 + Math.pow(level, 1.55) * 0.42;
+  return baseHours * getLateGameCostMultiplier(level);
+}
+
+function getModuleTargetHours(level: number, workshopLevel: number) {
+  const baseHours =
+    0.35 +
+    level * 0.28 +
+    Math.pow(level, 1.42) * 0.18 +
+    workshopLevel * 0.06;
+  return baseHours * getLateGameCostMultiplier(Math.max(level, workshopLevel));
+}
+
+function getLateGameCostMultiplier(level: number) {
+  if (level <= 30) {
+    return 1;
+  }
+
+  return 1 + Math.min(0.55, (level - 30) * 0.008);
 }
 
 function getModuleDisplayLevel(levels: ModuleUpgradeLevels) {
@@ -679,7 +698,8 @@ function formatResourceRate(
   progress: number,
   resourceKind: "parts" | "insight",
 ) {
-  const baseRate = resourceKind === "parts" ? 1.2 : 0.08;
+  const baseRate =
+    resourceKind === "parts" ? BASE_PARTS_PER_MINUTE : BASE_INSIGHT_PER_MINUTE;
   const rate = baseRate * (0.25 + progress / 100);
 
   if (resourceKind === "parts") {
