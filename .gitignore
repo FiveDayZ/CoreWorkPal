@@ -18,6 +18,5 @@ docs/
 stderr.txt
 stdout.txt
 .docs/
-.github/workflows/
 AGENTS.md.md
 CoreWorkPal.code-workspace
