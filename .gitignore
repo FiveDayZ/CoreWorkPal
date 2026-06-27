@@ -21,3 +21,4 @@ stdout.txt
 src-tauri/tauri.windows.conf.json
 AGENTS.md.md
 CoreWorkPal.code-workspace
+.github/workflows/
