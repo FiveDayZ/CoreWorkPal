@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 const WORK_LOG_TIME_SLICE_MS: i64 = 15 * 60 * 1000;
 const MAX_WORK_LOG_TIME_SLICES: usize = 128;
+const WORK_LOG_DAY_SECONDS: u64 = 24 * 60 * 60;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -561,6 +562,16 @@ pub struct WorkLogProcessUsage {
     pub disk_write_bytes_total: u64,
 }
 
+#[derive(Debug, Clone, Default)]
+struct ProcessUsageSampleAggregate {
+    name: String,
+    cpu_pressure_percent: f64,
+    memory_bytes_total: u64,
+    disk_read_bytes_total: u64,
+    disk_write_bytes_total: u64,
+    disk_rate_bytes_per_second: f64,
+}
+
 impl Default for WorkLogProcessUsage {
     fn default() -> Self {
         Self {
@@ -750,6 +761,8 @@ impl WorkLogEntry {
             return;
         }
 
+        let mut process_samples: BTreeMap<String, ProcessUsageSampleAggregate> = BTreeMap::new();
+
         for process in &snapshot.processes {
             let Some(name) = normalize_process_name(&process.name) else {
                 continue;
@@ -765,27 +778,50 @@ impl WorkLogEntry {
             let disk_rate = process.disk_read_bytes_per_second.unwrap_or(0.0).max(0.0)
                 + process.disk_write_bytes_per_second.unwrap_or(0.0).max(0.0);
             let cpu = process.cpu_usage_percent.clamp(0.0, 1000.0) as f64;
-            let is_active = cpu >= 1.0 || disk_rate >= 32.0 * 1024.0;
+
+            let aggregate = process_samples
+                .entry(name.to_ascii_lowercase())
+                .or_insert_with(|| ProcessUsageSampleAggregate {
+                    name: name.clone(),
+                    ..Default::default()
+                });
+            aggregate.cpu_pressure_percent += cpu;
+            aggregate.memory_bytes_total = aggregate
+                .memory_bytes_total
+                .saturating_add(process.memory_bytes);
+            aggregate.disk_read_bytes_total = aggregate
+                .disk_read_bytes_total
+                .saturating_add(disk_read_delta);
+            aggregate.disk_write_bytes_total = aggregate
+                .disk_write_bytes_total
+                .saturating_add(disk_write_delta);
+            aggregate.disk_rate_bytes_per_second += disk_rate as f64;
+        }
+
+        for (key, aggregate) in process_samples {
+            let cpu_pressure_percent = aggregate.cpu_pressure_percent.clamp(0.0, 1000.0);
+            let is_active = cpu_pressure_percent >= 1.0
+                || aggregate.disk_rate_bytes_per_second >= 32.0 * 1024.0;
 
             let usage = self
                 .process_usage
-                .entry(name.to_ascii_lowercase())
+                .entry(key)
                 .or_insert_with(|| WorkLogProcessUsage {
-                    name: name.clone(),
+                    name: aggregate.name.clone(),
                     ..Default::default()
                 });
             usage.sample_count = usage.sample_count.saturating_add(1);
             usage.observed_seconds = usage.observed_seconds.saturating_add(delta_seconds);
-            usage.cpu_pressure_points += cpu * delta_seconds as f64;
+            usage.cpu_pressure_points += cpu_pressure_percent * delta_seconds as f64;
             usage.memory_bytes_points = usage
                 .memory_bytes_points
-                .saturating_add(process.memory_bytes.saturating_mul(delta_seconds));
-            usage.memory_bytes_peak = usage.memory_bytes_peak.max(process.memory_bytes);
+                .saturating_add(aggregate.memory_bytes_total.saturating_mul(delta_seconds));
+            usage.memory_bytes_peak = usage.memory_bytes_peak.max(aggregate.memory_bytes_total);
             usage.disk_read_bytes_total =
-                usage.disk_read_bytes_total.saturating_add(disk_read_delta);
+                usage.disk_read_bytes_total.saturating_add(aggregate.disk_read_bytes_total);
             usage.disk_write_bytes_total = usage
                 .disk_write_bytes_total
-                .saturating_add(disk_write_delta);
+                .saturating_add(aggregate.disk_write_bytes_total);
 
             if is_active {
                 usage.active_sample_count = usage.active_sample_count.saturating_add(1);
@@ -2173,15 +2209,20 @@ fn build_assessment_insights(
 }
 
 fn build_process_insights(entry: &WorkLogEntry) -> Vec<ProcessUsageInsight> {
+    let duration_cap = process_duration_cap(entry);
+    let sample_count_cap = entry.sample_count.max(1);
     let mut insights = entry
         .process_usage
         .values()
         .filter(|usage| usage.sample_count > 0 && usage.observed_seconds > 0)
         .map(|usage| {
-            let observed_seconds = usage.observed_seconds.max(1);
+            let observed_seconds = usage.observed_seconds.min(duration_cap).max(1);
+            let active_seconds = usage.active_seconds.min(observed_seconds);
+            let sample_count = usage.sample_count.min(sample_count_cap).max(1);
+            let active_sample_count = usage.active_sample_count.min(sample_count);
             let cpu_pressure_percent =
-                usage.cpu_pressure_points / observed_seconds as f64;
-            let average_memory_bytes = usage.memory_bytes_points / observed_seconds;
+                usage.cpu_pressure_points / usage.observed_seconds.max(1) as f64;
+            let average_memory_bytes = usage.memory_bytes_points / usage.observed_seconds.max(1);
             let disk_total = usage
                 .disk_read_bytes_total
                 .saturating_add(usage.disk_write_bytes_total);
@@ -2190,27 +2231,32 @@ fn build_process_insights(entry: &WorkLogEntry) -> Vec<ProcessUsageInsight> {
                 || disk_total >= 2 * 1024 * 1024 * 1024
             {
                 InsightSeverity::Warning
-            } else if usage.active_seconds >= 30 * 60 || usage.observed_seconds >= 2 * 3600 {
+            } else if active_seconds >= 30 * 60 || observed_seconds >= 2 * 3600 {
                 InsightSeverity::Positive
             } else {
                 InsightSeverity::Neutral
             };
-            let rank_label = process_rank_label(usage);
+            let rank_label = process_rank_label(
+                usage,
+                observed_seconds,
+                sample_count,
+                active_sample_count,
+            );
             let summary = format!(
                 "{}：驻留 {}，活跃 {}，CPU 压力约 {:.0}%，内存峰值 {}。",
                 rank_label,
-                format_duration(usage.observed_seconds),
-                format_duration(usage.active_seconds),
+                format_duration(observed_seconds),
+                format_duration(active_seconds),
                 cpu_pressure_percent,
                 format_bytes(usage.memory_bytes_peak)
             );
 
             ProcessUsageInsight {
                 name: usage.name.clone(),
-                observed_seconds: usage.observed_seconds,
-                active_seconds: usage.active_seconds,
-                sample_count: usage.sample_count,
-                active_sample_count: usage.active_sample_count,
+                observed_seconds,
+                active_seconds,
+                sample_count,
+                active_sample_count,
                 cpu_pressure_percent,
                 average_memory_bytes,
                 memory_bytes_peak: usage.memory_bytes_peak,
@@ -2232,6 +2278,15 @@ fn build_process_insights(entry: &WorkLogEntry) -> Vec<ProcessUsageInsight> {
     insights
 }
 
+fn process_duration_cap(entry: &WorkLogEntry) -> u64 {
+    let active_day_seconds = entry.active_seconds.min(WORK_LOG_DAY_SECONDS);
+    if active_day_seconds > 0 {
+        active_day_seconds
+    } else {
+        WORK_LOG_DAY_SECONDS
+    }
+}
+
 fn process_insight_score(insight: &ProcessUsageInsight) -> f64 {
     let disk_total = insight
         .disk_read_bytes_total
@@ -2245,15 +2300,20 @@ fn process_insight_score(insight: &ProcessUsageInsight) -> f64 {
         + disk_total / (128.0 * 1024.0 * 1024.0)
 }
 
-fn process_rank_label(usage: &WorkLogProcessUsage) -> String {
+fn process_rank_label(
+    usage: &WorkLogProcessUsage,
+    observed_seconds: u64,
+    sample_count: u64,
+    active_sample_count: u64,
+) -> String {
     let disk_total = usage
         .disk_read_bytes_total
         .saturating_add(usage.disk_write_bytes_total);
     let cpu_pressure = usage.cpu_pressure_points / usage.observed_seconds.max(1) as f64;
 
-    if usage.observed_seconds >= 2 * 3600 {
+    if observed_seconds >= 2 * 3600 {
         "长驻后台".to_string()
-    } else if usage.active_sample_count >= usage.sample_count.saturating_div(3).max(3) {
+    } else if active_sample_count >= sample_count.saturating_div(3).max(3) {
         "高频活跃".to_string()
     } else if cpu_pressure >= 35.0 {
         "CPU 压力源".to_string()
@@ -2902,6 +2962,84 @@ mod assessment_tests {
         assert_eq!(entry.time_slices.len(), 1);
         assert_eq!(entry.time_slices[0].sample_count, 1);
         assert!(entry.time_slices[0].disk_read_bytes_total > 0);
+    }
+
+    #[test]
+    fn process_usage_counts_same_process_name_once_per_sample() {
+        let start = 1_780_000_000_000;
+        let mut entry = WorkLogEntry {
+            date: "2026-06-23".to_string(),
+            started_at: start,
+            updated_at: start,
+            ..Default::default()
+        };
+        let snapshot = HardwareSnapshot {
+            timestamp: start + 60_000,
+            processes: vec![
+                ProcessUsageSnapshot {
+                    pid: 10,
+                    name: "Code.exe".to_string(),
+                    cpu_usage_percent: 0.4,
+                    memory_bytes: 120 * 1024 * 1024,
+                    disk_read_bytes_per_second: Some(16.0 * 1024.0),
+                    disk_write_bytes_per_second: Some(0.0),
+                },
+                ProcessUsageSnapshot {
+                    pid: 11,
+                    name: "code.exe".to_string(),
+                    cpu_usage_percent: 0.7,
+                    memory_bytes: 180 * 1024 * 1024,
+                    disk_read_bytes_per_second: Some(20.0 * 1024.0),
+                    disk_write_bytes_per_second: Some(0.0),
+                },
+            ],
+            ..Default::default()
+        };
+
+        entry.record_snapshot(&snapshot, start + 60_000);
+
+        let usage = entry.process_usage.get("code.exe").expect("code usage");
+        assert_eq!(usage.sample_count, 1);
+        assert_eq!(usage.active_sample_count, 1);
+        assert_eq!(usage.observed_seconds, 60);
+        assert_eq!(usage.active_seconds, 60);
+        assert_eq!(usage.memory_bytes_peak, 300 * 1024 * 1024);
+        assert!(usage.disk_read_bytes_total > 2 * 1024 * 1024);
+    }
+
+    #[test]
+    fn process_insights_cap_legacy_durations_to_day_runtime() {
+        let mut process_usage = BTreeMap::new();
+        process_usage.insert(
+            "browser.exe".to_string(),
+            WorkLogProcessUsage {
+                name: "browser.exe".to_string(),
+                sample_count: 240,
+                active_sample_count: 180,
+                observed_seconds: 12 * 3600,
+                active_seconds: 9 * 3600,
+                cpu_pressure_points: 12.0 * 12.0 * 3600.0,
+                memory_bytes_peak: 1024 * 1024 * 1024,
+                ..Default::default()
+            },
+        );
+        let entry = WorkLogEntry {
+            date: "2026-06-23".to_string(),
+            active_seconds: 3600,
+            sample_count: 60,
+            process_usage,
+            ..Default::default()
+        };
+
+        let insights = build_process_insights(&entry);
+
+        assert_eq!(insights.len(), 1);
+        assert_eq!(insights[0].observed_seconds, 3600);
+        assert_eq!(insights[0].active_seconds, 3600);
+        assert_eq!(insights[0].sample_count, 60);
+        assert_eq!(insights[0].active_sample_count, 60);
+        assert!(insights[0].summary.contains("驻留 1h 0m"));
+        assert!(insights[0].summary.contains("活跃 1h 0m"));
     }
 
     #[test]

@@ -74,7 +74,8 @@ const workLogTabs: Array<{ id: WorkLogTab; label: string }> = [
 ];
 
 const WORKLOG_HISTORY_LIMIT = 370;
-const WORKPRINT_CALENDAR_DAYS = 7;
+const RECENT_DATE_SHORTCUT_DAYS = 7;
+const WORKPRINT_CALENDAR_DAYS = 14;
 
 export function WorkLogPage() {
   const report = useWorkLogStore((state) => state.report);
@@ -92,7 +93,7 @@ export function WorkLogPage() {
   const [activeTab, setActiveTab] = useState<WorkLogTab>("overview");
   const [exportHint, setExportHint] = useState<string | null>(null);
   const exportHintTimerRef = useRef<number | null>(null);
-  const recentDates = useMemo(() => buildRecentDates(WORKPRINT_CALENDAR_DAYS), []);
+  const recentDates = useMemo(() => buildRecentDates(RECENT_DATE_SHORTCUT_DAYS), []);
 
   useEffect(() => {
     void loadWorkLogReport(selectedDate);
@@ -100,7 +101,7 @@ export function WorkLogPage() {
 
   useEffect(() => {
     void loadAssessmentHistory(WORKLOG_HISTORY_LIMIT);
-    void loadAssessmentTrend(WORKPRINT_CALENDAR_DAYS);
+    void loadAssessmentTrend(RECENT_DATE_SHORTCUT_DAYS);
   }, [loadAssessmentHistory, loadAssessmentTrend]);
 
   const currentReport = report;
@@ -651,7 +652,7 @@ function RecentWorkprintCalendar({
     <section className="cwp-workprint-calendar-card">
       <div className="cwp-section-title">
         <PixelIcon name="calendar" size={14} />
-        <strong>最近 7 天指纹日历</strong>
+        <strong>最近 {WORKPRINT_CALENDAR_DAYS} 天指纹日历</strong>
       </div>
       <div className="cwp-workprint-calendar-grid">
         {calendarCards.map((card) => (
@@ -903,7 +904,7 @@ function WorkTrendPanel({
 }) {
   if (!trend || trend.sampleDays === 0) {
     return (
-      <>
+      <div className="cwp-trend-page">
         <section className="cwp-trend-card">
           <div className="cwp-section-title">
             <PixelIcon name="energy" size={14} />
@@ -914,12 +915,12 @@ function WorkTrendPanel({
           </div>
         </section>
         <AssessmentInsightGrid assessment={assessment} />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="cwp-trend-page">
       <section className={`cwp-trend-card is-${trend.dominantDayType}`}>
         <div className="cwp-section-title">
           <PixelIcon name="energy" size={14} />
@@ -957,7 +958,7 @@ function WorkTrendPanel({
         </div>
       </section>
       <AssessmentInsightGrid assessment={assessment} />
-    </>
+    </div>
   );
 }
 
@@ -1103,10 +1104,6 @@ function ProcessInsightPanel({
   }
 
   const topProcess = processes[0];
-  const activeTotal = processes.reduce(
-    (sum, process) => sum + process.activeSeconds,
-    0,
-  );
 
   return (
     <section className="cwp-process-panel">
@@ -1118,7 +1115,7 @@ function ProcessInsightPanel({
         <div className="cwp-process-summary">
           <span>最高贡献</span>
           <strong>{topProcess.name}</strong>
-          <em>{formatDuration(activeTotal)} 活跃</em>
+          <em>{formatDuration(topProcess.activeSeconds)} 活跃</em>
         </div>
       </div>
 

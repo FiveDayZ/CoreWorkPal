@@ -4719,10 +4719,16 @@ label {
 
 .cwp-workprint-calendar-grid {
   min-width: 0;
+  max-height: 126px;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   justify-items: stretch;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(214, 233, 244, 0.35) transparent;
 }
 
 .cwp-workprint-day {
@@ -6153,4 +6159,78 @@ input[type="range"]::-moz-range-thumb,
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.cwp-trend-page {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.cwp-trend-page .cwp-trend-card {
+  margin-bottom: 0;
+  padding: 7px;
+  overflow: visible;
+}
+
+.cwp-trend-page .cwp-trend-head {
+  grid-template-columns: minmax(0, 1fr) 228px;
+  gap: 6px;
+}
+
+.cwp-trend-page .cwp-trend-copy {
+  padding: 5px 6px;
+  gap: 3px;
+}
+
+.cwp-trend-page .cwp-trend-copy p {
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.cwp-trend-page .cwp-trend-stat-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.cwp-trend-page .cwp-trend-stat {
+  padding: 4px;
+}
+
+.cwp-trend-page .cwp-trend-stat strong {
+  font-size: 13px;
+}
+
+.cwp-trend-page .cwp-trend-insight-grid {
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.cwp-trend-page .cwp-trend-insight {
+  padding: 5px;
+  gap: 3px;
+}
+
+.cwp-trend-page .cwp-trend-insight p {
+  font-size: 8px;
+  line-height: 1.3;
+}
+
+.cwp-trend-page .cwp-assessment-insights {
+  gap: 5px;
+  margin-bottom: 0;
+}
+
+.cwp-trend-page .cwp-assessment-column {
+  padding: 6px;
+}
+
+.cwp-trend-page .cwp-assessment-item {
+  padding: 5px;
+  gap: 3px;
+}
+
+.cwp-trend-page .cwp-assessment-item p {
+  font-size: 8px;
+  line-height: 1.3;
 }
