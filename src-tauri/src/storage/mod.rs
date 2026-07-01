@@ -1,7 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, OnceLock},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -16,6 +16,10 @@ use crate::{
 pub struct StorageService {
     root: PathBuf,
     corruption_rebuilds: Arc<Mutex<Vec<String>>>,
+    /// Cached SMBIOS UUID (the machine's stable hardware id). `query_smbios_uuid`
+    /// spawns powershell.exe, which is slow; since the UUID does not change for
+    /// the life of the process we compute it at most once per StorageService.
+    smbios_uuid: OnceLock<Option<String>>,
 }
 
 impl StorageService {
@@ -30,15 +34,23 @@ impl StorageService {
         Ok(Self {
             root,
             corruption_rebuilds: Arc::new(Mutex::new(Vec::new())),
+            smbios_uuid: OnceLock::new(),
         })
     }
 
     pub fn load_or_create_settings(&self) -> Result<AppSettings, String> {
         let mut settings = self.load_or_create::<AppSettings>("settings.json")?;
-        if migrate_settings(&mut settings) {
+        if migrate_settings(&mut settings, self.cached_smbios_uuid()) {
             self.save_settings(&settings)?;
         }
         Ok(settings)
+    }
+
+    /// Returns the cached SMBIOS UUID, querying powershell only on the first call.
+    fn cached_smbios_uuid(&self) -> Option<String> {
+        self.smbios_uuid
+            .get_or_init(|| query_smbios_uuid())
+            .clone()
     }
 
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), String> {
@@ -127,11 +139,11 @@ impl StorageService {
         fs::write(&temp_path, content)
             .map_err(|error| format!("failed to write temp {file_name}: {error}"))?;
 
-        if path.exists() {
-            fs::remove_file(&path)
-                .map_err(|error| format!("failed to replace {file_name}: {error}"))?;
-        }
-
+        // Atomic replace: a single rename over the existing file. On Windows
+        // this uses MoveFileExW with MOVEFILE_REPLACE_EXISTING, so there is no
+        // window where the target is absent. The previous remove-then-rename
+        // sequence left the file missing between the two calls; a crash there
+        // would lose the data file entirely.
         fs::rename(&temp_path, &path)
             .map_err(|error| format!("failed to commit {file_name}: {error}"))
     }
@@ -228,7 +240,7 @@ fn generate_random_cat_id() -> String {
     result
 }
 
-fn migrate_settings(settings: &mut AppSettings) -> bool {
+fn migrate_settings(settings: &mut AppSettings, smbios_uuid: Option<String>) -> bool {
     let mut changed = false;
     if settings.schema_version < APP_SETTINGS_SCHEMA_VERSION {
         if settings.schema_version < 2 {
@@ -239,7 +251,7 @@ fn migrate_settings(settings: &mut AppSettings) -> bool {
         changed = true;
     }
 
-    let target_cat_id = if let Some(uuid) = query_smbios_uuid() {
+    let target_cat_id = if let Some(uuid) = smbios_uuid {
         convert_uuid_to_cat_id(&uuid)
     } else {
         if settings.cat_id.is_empty() {
