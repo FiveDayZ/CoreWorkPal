@@ -211,6 +211,34 @@ pub struct CatStateChangedEvent {
     pub cat_message: String,
 }
 
+/// Mutable per-process CoreCat runtime state, gathered behind a single lock so
+/// that the read → decide → write cycle in `PetStateService::update_for_snapshot`
+/// is atomic and cannot be interleaved by a concurrent settings command or
+/// snapshot tick. Previously these were five separate `RwLock` fields, which left
+/// a window for stale-state decisions and lost updates.
+#[derive(Debug, Clone)]
+pub struct CatRuntimeState {
+    pub cat_state: CatState,
+    pub cat_message: String,
+    pub last_cat_state_changed_at: i64,
+    /// When the temperature first became "safe" (below the exit threshold), if ever.
+    pub temperature_safe_since: Option<i64>,
+    /// Whether at least one pet state has been emitted since launch.
+    pub has_emitted_cat_state: bool,
+}
+
+impl Default for CatRuntimeState {
+    fn default() -> Self {
+        Self {
+            cat_state: CatState::Idle,
+            cat_message: "CoreCat 正在待命。".to_string(),
+            last_cat_state_changed_at: current_timestamp_ms(),
+            temperature_safe_since: None,
+            has_emitted_cat_state: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {

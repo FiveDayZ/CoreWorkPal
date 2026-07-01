@@ -12,6 +12,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{
     commands::record_internal_achievement_event,
     app_state::AppState,
+    events::{HARDWARE_METRICS, WORKLOG_UPDATED, WORKSHOP_UPDATED},
     models::{current_timestamp_ms, HardwareMetricsSnapshot, HardwareSnapshot},
     pet::PetStateService,
     workshop::ProductionService,
@@ -65,11 +66,8 @@ pub fn start_hardware_snapshot_pump(app: AppHandle) {
                 (snapshot, interval_ms)
             };
 
-            if let Err(error) = app.emit(
-                "hardware:metrics",
-                HardwareMetricsSnapshot::from(&snapshot),
-            ) {
-                tracing::warn!("failed to emit hardware:metrics: {error}");
+            if let Err(error) = app.emit(HARDWARE_METRICS, HardwareMetricsSnapshot::from(&snapshot)) {
+                tracing::warn!("failed to emit {HARDWARE_METRICS}: {error}");
             }
 
             update_workshop_for_snapshot(&app, &snapshot).await;
@@ -123,8 +121,8 @@ async fn update_work_log_for_snapshot(app: &AppHandle, snapshot: &HardwareSnapsh
         report
     };
 
-    if let Err(error) = app.emit("worklog:updated", updated_report) {
-        tracing::warn!("failed to emit worklog:updated: {error}");
+    if let Err(error) = app.emit(WORKLOG_UPDATED, updated_report) {
+        tracing::warn!("failed to emit {WORKLOG_UPDATED}: {error}");
     }
 }
 
@@ -191,7 +189,7 @@ async fn update_workshop_for_snapshot(app: &AppHandle, snapshot: &HardwareSnapsh
         }
     }
 
-    if let Err(error) = app.emit("workshop:updated", updated_workshop) {
-        tracing::warn!("failed to emit workshop:updated: {error}");
+    if let Err(error) = app.emit(WORKSHOP_UPDATED, updated_workshop) {
+        tracing::warn!("failed to emit {WORKSHOP_UPDATED}: {error}");
     }
 }

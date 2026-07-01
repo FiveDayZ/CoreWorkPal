@@ -5,6 +5,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{
     app_state::AppState,
     commands::record_internal_achievement_event,
+    events::WORKLOG_UPDATED,
     models::{current_timestamp_ms, date_key_from_timestamp, WorkLogEntry, WorkLogReport},
 };
 
@@ -78,8 +79,8 @@ async fn flush_input_activity(app: &AppHandle, delta: InputActivityDelta) {
         report
     };
 
-    if let Err(error) = app.emit("worklog:updated", updated_report) {
-        tracing::warn!("failed to emit worklog:updated after input activity: {error}");
+    if let Err(error) = app.emit(WORKLOG_UPDATED, updated_report) {
+        tracing::warn!("failed to emit {WORKLOG_UPDATED} after input activity: {error}");
     }
 
     if let Err(error) = record_internal_achievement_event(

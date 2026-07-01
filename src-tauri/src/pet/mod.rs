@@ -19,61 +19,58 @@ impl PetStateService {
         let now_ms = current_timestamp_ms();
         let state = app.state::<AppState>();
         let settings = state.settings.read().await.clone();
-        let current = state.cat_state.read().await.clone();
-        let current_temperature_safe_since = *state.temperature_safe_since.read().await;
-        let temperature_safe_since = next_temperature_safe_since(
-            &settings,
-            snapshot,
-            &current,
-            current_temperature_safe_since,
-            now_ms,
-        );
-        let candidate = resolve_candidate_state(
-            &settings,
-            snapshot,
-            &current,
-            temperature_safe_since,
-            now_ms,
-        );
-        let last_changed_at = *state.last_cat_state_changed_at.read().await;
-        let has_emitted = *state.has_emitted_cat_state.read().await;
-        {
-            let mut safe_since = state.temperature_safe_since.write().await;
-            *safe_since = temperature_safe_since;
-        }
 
-        if has_emitted
-            && !should_transition(&current, &candidate, now_ms.saturating_sub(last_changed_at))
-        {
-            return;
-        }
+        // Read, decide, and write the entire cat runtime state under a single
+        // lock guard. Previously these were five separate RwLocks read in one
+        // phase and written in another, so a concurrent tick or settings update
+        // could interleave between the read and the write, producing a decision
+        // from stale state or a lost update.
+        let payload = {
+            let mut runtime = state.cat_runtime.write().await;
 
-        let message = message_for_state(&candidate).to_string();
+            let temperature_safe_since = next_temperature_safe_since(
+                &settings,
+                snapshot,
+                &runtime.cat_state,
+                runtime.temperature_safe_since,
+                now_ms,
+            );
+            let candidate = resolve_candidate_state(
+                &settings,
+                snapshot,
+                &runtime.cat_state,
+                temperature_safe_since,
+                now_ms,
+            );
 
-        {
-            let mut cat_state = state.cat_state.write().await;
-            *cat_state = candidate.clone();
-        }
-        {
-            let mut cat_message = state.cat_message.write().await;
-            *cat_message = message.clone();
-        }
-        {
-            let mut changed_at = state.last_cat_state_changed_at.write().await;
-            *changed_at = now_ms;
-        }
-        {
-            let mut emitted = state.has_emitted_cat_state.write().await;
-            *emitted = true;
-        }
+            // Always advance the temperature-safe marker; it is derived from the
+            // snapshot, not from whether the visible state transitions.
+            runtime.temperature_safe_since = temperature_safe_since;
 
-        let payload = CatStateChangedEvent {
-            timestamp: now_ms,
-            cat_state: candidate,
-            cat_message: message,
+            if runtime.has_emitted_cat_state
+                && !should_transition(
+                    &runtime.cat_state,
+                    &candidate,
+                    now_ms.saturating_sub(runtime.last_cat_state_changed_at),
+                )
+            {
+                return;
+            }
+
+            let message = message_for_state(&candidate).to_string();
+            runtime.cat_state = candidate.clone();
+            runtime.cat_message = message.clone();
+            runtime.last_cat_state_changed_at = now_ms;
+            runtime.has_emitted_cat_state = true;
+
+            CatStateChangedEvent {
+                timestamp: now_ms,
+                cat_state: candidate,
+                cat_message: message,
+            }
         };
 
-        if let Err(error) = app.emit("pet:state-changed", payload) {
+        if let Err(error) = app.emit(crate::events::PET_STATE_CHANGED, payload) {
             tracing::warn!("failed to emit pet:state-changed: {error}");
         }
     }

@@ -5,6 +5,7 @@ use tauri::{
 
 use crate::{
     app_state::AppState,
+    events::SETTINGS_UPDATED,
     models::{AppSettings, AppSettingsPatch},
 };
 
@@ -250,8 +251,8 @@ pub async fn save_window_position(
         settings.clone()
     };
 
-    app.emit("settings:updated", settings.clone())
-        .map_err(|error| format!("failed to emit settings:updated: {error}"))?;
+    app.emit(SETTINGS_UPDATED, settings.clone())
+        .map_err(|error| format!("failed to emit {SETTINGS_UPDATED}: {error}"))?;
 
     Ok(settings)
 }

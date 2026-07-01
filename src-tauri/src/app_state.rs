@@ -4,10 +4,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     achievements::AchievementBook,
-    models::{
-        current_timestamp_ms, AppSettings, CatState, HardwareSnapshot, LayoutState, WorkLogBook,
-        WorkshopState,
-    },
+    models::{AppSettings, CatRuntimeState, HardwareSnapshot, LayoutState, WorkLogBook, WorkshopState},
     monitoring::{create_default_adapter, HardwareSensorAdapter},
     storage::StorageService,
 };
@@ -19,11 +16,8 @@ pub struct AppState {
     pub work_logs: RwLock<WorkLogBook>,
     pub achievements: RwLock<AchievementBook>,
     pub last_snapshot: RwLock<Option<HardwareSnapshot>>,
-    pub cat_state: RwLock<CatState>,
-    pub cat_message: RwLock<String>,
-    pub last_cat_state_changed_at: RwLock<i64>,
-    pub temperature_safe_since: RwLock<Option<i64>>,
-    pub has_emitted_cat_state: RwLock<bool>,
+    /// All CoreCat runtime fields behind one lock so state updates are atomic.
+    pub cat_runtime: RwLock<CatRuntimeState>,
     pub storage: StorageService,
     /// `Arc` so the adapter can be cloned into `spawn_blocking` closures,
     /// keeping subprocess work (nvidia-smi / powershell) off the async runtime.
@@ -46,11 +40,7 @@ impl AppState {
             work_logs: RwLock::new(work_logs),
             achievements: RwLock::new(achievements),
             last_snapshot: RwLock::new(None),
-            cat_state: RwLock::new(CatState::Idle),
-            cat_message: RwLock::new("CoreCat 正在待命。".to_string()),
-            last_cat_state_changed_at: RwLock::new(current_timestamp_ms()),
-            temperature_safe_since: RwLock::new(None),
-            has_emitted_cat_state: RwLock::new(false),
+            cat_runtime: RwLock::new(CatRuntimeState::default()),
             storage,
             hardware_adapter: Arc::new(Mutex::new(create_default_adapter())),
         })
