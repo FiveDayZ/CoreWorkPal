@@ -10,6 +10,7 @@ import type {
 } from "../../types/dailyWorkAssessment";
 import type { WorkLogReport } from "../../types/workLog";
 import { formatBytes, formatDuration } from "../../services/formatters";
+import { copyTextToClipboard } from "../../services/clipboard";
 import { trackAchievementEvent } from "../../services/tauriCommands";
 import { useWorkLogStore } from "../../stores/workLogStore";
 import { PixelIcon, type PixelIconName } from "../../ui/PixelIcon";
@@ -1337,23 +1338,6 @@ function formatProcessLines(items: ProcessUsageInsight[]) {
       item.cpuPressurePercent,
     )}%，内存峰值 ${formatBytes(item.memoryBytesPeak)}，磁盘 ${formatBytes(diskTotal)}`;
   });
-}
-
-async function copyTextToClipboard(text: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "true");
-  textarea.style.position = "fixed";
-  textarea.style.left = "-9999px";
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand("copy");
-  document.body.removeChild(textarea);
 }
 
 async function exportVisualReportCard({

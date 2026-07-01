@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState } from "react";
 import { AchievementUnlockToast } from "../../components/AchievementUnlockToast";
+import { ErrorBoundary } from "../../components/ErrorBoundary";
 import { mainRoutes, type MainRoute } from "../../routes";
 import { formatParts } from "../../services/formatters";
 import {
@@ -213,9 +214,11 @@ export function MainWindow() {
           />
 
           <section className="cwp-main-content">
-            <Suspense fallback={null}>
-              <CurrentPage />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={null}>
+                <CurrentPage />
+              </Suspense>
+            </ErrorBoundary>
           </section>
         </div>
         <AchievementUnlockToast />

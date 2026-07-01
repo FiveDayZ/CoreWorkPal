@@ -12,6 +12,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import type { MonitorBarMode, MonitorMetric } from "../../types/settings";
 import { PetAvatar, MonitorChip } from "../../ui/components";
 import { getMonitorMetricView } from "../../ui/metrics";
+import { getDisplayedMetrics } from "../../services/monitorMetrics";
 
 const defaultMetrics: MonitorMetric[] = ["Cpu", "Ram", "Gpu", "Network"];
 
@@ -170,17 +171,6 @@ export function MonitorBarWindow() {
       </div>
     </div>
   );
-}
-
-function getDisplayedMetrics(
-  metrics: MonitorMetric[],
-  mode: MonitorBarMode,
-): MonitorMetric[] {
-  if (mode === "Micro") {
-    return metrics.slice(0, 2);
-  }
-
-  return metrics;
 }
 
 function monitorModeClass(mode: MonitorBarMode) {
