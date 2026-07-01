@@ -9,6 +9,17 @@ interface UpdateModalProps {
   onClose: () => void;
 }
 
+/** Safely coerce a caught value (Tauri commands reject with strings) to a message. */
+function toErrorMessage(error: unknown): string {
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
   const [step, setStep] = useState<"checking" | "up-to-date" | "new-version" | "downloading" | "ready" | "error">("checking");
   const [errorMsg, setErrorMsg] = useState("");
@@ -17,7 +28,6 @@ export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
   const [pat, setPat] = useState(() => localStorage.getItem("cwp_updater_pat") || "");
   const [showSettings, setShowSettings] = useState(false);
   const [downloadedPath, setDownloadedPath] = useState("");
-
   useEffect(() => {
     if (isOpen) {
       handleCheck();
@@ -61,8 +71,8 @@ export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
       } else {
         setStep("up-to-date");
       }
-    } catch (e: any) {
-      setErrorMsg(e.toString());
+    } catch (e: unknown) {
+      setErrorMsg(toErrorMessage(e));
       setStep("error");
     }
   };
@@ -75,8 +85,8 @@ export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
       const path = await downloadUpdate(updateResult.assetId || 0, updateResult.assetName, pat || undefined);
       setDownloadedPath(path);
       setStep("ready");
-    } catch (e: any) {
-      setErrorMsg(e.toString());
+    } catch (e: unknown) {
+      setErrorMsg(toErrorMessage(e));
       setStep("error");
     }
   };
@@ -84,8 +94,8 @@ export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
   const handleInstall = async () => {
     try {
       await installUpdate(downloadedPath);
-    } catch (e: any) {
-      setErrorMsg(e.toString());
+    } catch (e: unknown) {
+      setErrorMsg(toErrorMessage(e));
       setStep("error");
     }
   };
@@ -149,15 +159,10 @@ export function UpdateModal({ isOpen, onClose }: UpdateModalProps) {
         <div className="cwp-modal-body" style={{ minHeight: "160px", justifyContent: "center" }}>
           {step === "checking" && (
             <div style={{ textAlign: "center", padding: "20px 0" }}>
-              <div className="cwp-spinner" style={{ 
-                margin: "0 auto 10px auto",
-                width: "24px",
-                height: "24px",
-                border: "2px solid var(--color-border-soft)",
-                borderTopColor: "var(--color-brand-orange-strong)",
-                borderRadius: "50%",
-                animation: "spin 1s linear infinite"
-              }}></div>
+              <div
+                className="cwp-spinner"
+                style={{ margin: "0 auto 10px auto" }}
+              ></div>
               <p style={{ fontSize: "11px", color: "var(--color-text-secondary)" }}>正在检查服务器上的最新发布记录...</p>
             </div>
           )}
