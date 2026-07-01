@@ -19,7 +19,7 @@ export function formatBytes(value: number | null): string {
     return "N/A";
   }
 
-  const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+  const units = ["B", "KB", "MB", "GB"];
   let size = Math.max(0, value);
   let unitIndex = 0;
 
@@ -28,7 +28,7 @@ export function formatBytes(value: number | null): string {
     unitIndex += 1;
   }
 
-  return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex].replace("/s", "")}`;
+  return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
 export function formatDuration(seconds: number): string {

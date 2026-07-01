@@ -167,7 +167,7 @@ pub async fn download_update(
         }
     } else if let Ok(env_token) = std::env::var("GITHUB_TOKEN") {
         if !env_token.is_empty() {
-            request = request.header("token", format!("token {}", env_token));
+            request = request.header("Authorization", format!("token {}", env_token));
         }
     }
 
@@ -196,8 +196,11 @@ pub async fn download_update(
         .map_err(|e| format!("Failed to open local destination file: {}", e))?;
 
     if !is_partial {
-        // If server didn't respond with 206, truncate the file and download from start
-        file.set_len(0).ok();
+        // If server didn't respond with 206, truncate the file and download from start.
+        // A failed truncate must abort: otherwise leftover bytes from a prior
+        // partial download would be prepended to the fresh stream, corrupting it.
+        file.set_len(0)
+            .map_err(|e| format!("Failed to truncate partial download file: {}", e))?;
     }
 
     let mut downloaded = if is_partial { start_pos } else { 0 };
@@ -250,13 +253,15 @@ pub async fn download_update(
 }
 
 #[tauri::command]
-pub async fn install_update(package_path: String) -> Result<(), String> {
+pub async fn install_update(app: AppHandle, package_path: String) -> Result<(), String> {
     let path = PathBuf::from(&package_path);
     if !path.exists() {
         return Err(format!("Update package not found at path: {}", package_path));
     }
 
-    // Verify file integrity (optional helper: check if SHA256 file exists next to it)
+    // Verify file integrity when a SHA256 sidecar is present next to the package.
+    // The sidecar is optional today (releases may not ship one), but when it
+    // exists we enforce it; when absent we log and proceed.
     let sha256_path = path.with_extension(format!("{}.sha256", path.extension().unwrap_or_default().to_string_lossy()));
     if sha256_path.exists() {
         let mut sha256_file = File::open(&sha256_path).map_err(|e| e.to_string())?;
@@ -278,6 +283,13 @@ pub async fn install_update(package_path: String) -> Result<(), String> {
         if calculated_hash != expected_hash {
             return Err("File verification failed: SHA256 checksum mismatch.".to_string());
         }
+        tracing::info!("update package passed SHA256 verification: {}", package_path);
+    } else {
+        tracing::warn!(
+            "no SHA256 sidecar found for update package {}; skipping integrity verification: {}",
+            package_path,
+            sha256_path.display()
+        );
     }
 
     // Windows upgrade action
@@ -299,8 +311,10 @@ pub async fn install_update(package_path: String) -> Result<(), String> {
             command.spawn()
                 .map_err(|e| format!("Failed to spawn installer process: {}", e))?;
             
-            // Terminate current process to let the installer replace the file
-            std::process::exit(0);
+            // Terminate current process to let the installer replace the file.
+            // Use app.exit(0) so Tauri runs its graceful shutdown (window
+            // cleanup, drop handlers) instead of a hard process::exit.
+            app.exit(0);
         } else if package_path.ends_with(".zip") {
             // Portable Zip-based hot swap
             // Extract the Zip and replace current exe. Note: Zip extraction requires external tools or library.
