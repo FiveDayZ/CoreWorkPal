@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use tokio::sync::RwLock;
 
@@ -25,7 +25,9 @@ pub struct AppState {
     pub temperature_safe_since: RwLock<Option<i64>>,
     pub has_emitted_cat_state: RwLock<bool>,
     pub storage: StorageService,
-    pub hardware_adapter: Mutex<Box<dyn HardwareSensorAdapter>>,
+    /// `Arc` so the adapter can be cloned into `spawn_blocking` closures,
+    /// keeping subprocess work (nvidia-smi / powershell) off the async runtime.
+    pub hardware_adapter: Arc<Mutex<Box<dyn HardwareSensorAdapter>>>,
 }
 
 impl AppState {
@@ -50,7 +52,7 @@ impl AppState {
             temperature_safe_since: RwLock::new(None),
             has_emitted_cat_state: RwLock::new(false),
             storage,
-            hardware_adapter: Mutex::new(create_default_adapter()),
+            hardware_adapter: Arc::new(Mutex::new(create_default_adapter())),
         })
     }
 }

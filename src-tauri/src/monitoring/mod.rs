@@ -38,13 +38,24 @@ pub fn start_hardware_snapshot_pump(app: AppHandle) {
                 let settings = state.settings.read().await.clone();
                 let interval_ms = resolve_sampling_interval_ms(&app, &settings);
 
-                let snapshot = match state.hardware_adapter.lock() {
-                    Ok(mut adapter) => adapter.sample(),
-                    Err(error) => {
-                        tracing::warn!("hardware adapter lock failed: {error}");
-                        HardwareSnapshot::default()
+                // `sample()` may spawn subprocesses (nvidia-smi, powershell)
+                // that block for hundreds of ms. Run it on a blocking thread
+                // so the Tauri async runtime is not stalled on every tick.
+                let adapter = state.hardware_adapter.clone();
+                let snapshot = tokio::task::spawn_blocking(move || {
+                    match adapter.lock() {
+                        Ok(mut adapter) => adapter.sample(),
+                        Err(error) => {
+                            tracing::warn!("hardware adapter lock failed: {error}");
+                            HardwareSnapshot::default()
+                        }
                     }
-                };
+                })
+                .await
+                .unwrap_or_else(|join_error| {
+                    tracing::warn!("hardware sample task panicked: {join_error}");
+                    HardwareSnapshot::default()
+                });
 
                 {
                     let mut last_snapshot = state.last_snapshot.write().await;

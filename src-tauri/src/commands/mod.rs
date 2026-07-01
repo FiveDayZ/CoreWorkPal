@@ -163,11 +163,16 @@ pub async fn get_hardware_snapshot(state: State<'_, AppState>) -> Result<Hardwar
     }
 
     let snapshot = {
-        let mut adapter = state
-            .hardware_adapter
-            .lock()
-            .map_err(|error| format!("hardware adapter lock failed: {error}"))?;
-        adapter.sample()
+        // `sample()` may spawn subprocesses; run it off the async runtime.
+        let adapter = state.hardware_adapter.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut adapter = adapter
+                .lock()
+                .map_err(|error| format!("hardware adapter lock failed: {error}"))?;
+            Ok::<HardwareSnapshot, String>(adapter.sample())
+        })
+        .await
+        .map_err(|join_error| format!("hardware sample task failed: {join_error}"))??
     };
 
     *state.last_snapshot.write().await = Some(snapshot.clone());
