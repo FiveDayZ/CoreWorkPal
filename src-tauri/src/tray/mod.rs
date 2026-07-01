@@ -7,6 +7,7 @@ use tauri::{
 
 use crate::{
     app_state::AppState,
+    events::{SETTINGS_UPDATED, UI_NAVIGATE_MAIN},
     models::{AppSettings, AppSettingsPatch},
     window_manager,
 };
@@ -164,8 +165,8 @@ fn handle_menu_event(app: &AppHandle, event: tauri::menu::MenuEvent) {
 
 async fn show_main_route(app: &AppHandle, route: &str) -> Result<(), String> {
     window_manager::show_window(app, "main", true).await?;
-    app.emit("ui:navigate-main", route)
-        .map_err(|error| format!("failed to emit ui:navigate-main: {error}"))
+    app.emit(UI_NAVIGATE_MAIN, route)
+        .map_err(|error| format!("failed to emit {UI_NAVIGATE_MAIN}: {error}"))
 }
 
 async fn toggle_cat_visibility(app: AppHandle) -> Result<(), String> {
@@ -234,8 +235,8 @@ async fn apply_settings_patch(
         let _ = tray.set_icon(Some(icon));
     }
 
-    app.emit("settings:updated", settings.clone())
-        .map_err(|error| format!("failed to emit settings:updated: {error}"))?;
+    app.emit(SETTINGS_UPDATED, settings.clone())
+        .map_err(|error| format!("failed to emit {SETTINGS_UPDATED}: {error}"))?;
 
     Ok(settings)
 }

@@ -1,6 +1,7 @@
 mod app_state;
 pub mod achievements;
 mod commands;
+pub mod events;
 mod input_activity;
 mod models;
 mod monitoring;

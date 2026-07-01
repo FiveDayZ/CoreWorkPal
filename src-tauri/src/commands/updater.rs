@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tauri::{AppHandle, Emitter};
 
+use crate::events::UPDATE_PROGRESS;
+
 // GitHub config
 const GITHUB_OWNER: &str = "FiveDayZ";
 const GITHUB_REPO: &str = "CoreWorkPal";
@@ -225,7 +227,7 @@ pub async fn download_update(
 
         // Emit download progress to frontend
         app.emit(
-            "update:progress",
+            UPDATE_PROGRESS,
             DownloadProgress {
                 bytes_downloaded: downloaded,
                 total_bytes,

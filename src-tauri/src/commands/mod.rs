@@ -14,6 +14,10 @@ use crate::{
         TrackAchievementEventRequest, TrackAchievementEventResponse,
     },
     app_state::AppState,
+    events::{
+        ACHIEVEMENT_UNLOCKED, CORECAT_INTERACTION_STATE, SETTINGS_UPDATED, UI_NAVIGATE_MAIN,
+        WORKSHOP_UPDATED,
+    },
     models::{
         current_timestamp_ms, today_key, AppSettings, AppSettingsPatch, DailyWorkAssessment,
         DailyWorkAssessmentSummary, DailyWorkAssessmentTrend, HardwareSnapshot, WorkLogEntry,
@@ -149,8 +153,8 @@ fn emit_achievement_unlocks(
     }
 
     for unlocked in &response.unlocked {
-        app.emit("achievement:unlocked", unlocked)
-            .map_err(|error| format!("failed to emit achievement:unlocked: {error}"))?;
+        app.emit(ACHIEVEMENT_UNLOCKED, unlocked)
+            .map_err(|error| format!("failed to emit {ACHIEVEMENT_UNLOCKED}: {error}"))?;
     }
 
     emit_corecat_interaction_state(app, "achievementPop")
@@ -163,11 +167,16 @@ pub async fn get_hardware_snapshot(state: State<'_, AppState>) -> Result<Hardwar
     }
 
     let snapshot = {
-        let mut adapter = state
-            .hardware_adapter
-            .lock()
-            .map_err(|error| format!("hardware adapter lock failed: {error}"))?;
-        adapter.sample()
+        // `sample()` may spawn subprocesses; run it off the async runtime.
+        let adapter = state.hardware_adapter.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut adapter = adapter
+                .lock()
+                .map_err(|error| format!("hardware adapter lock failed: {error}"))?;
+            Ok::<HardwareSnapshot, String>(adapter.sample())
+        })
+        .await
+        .map_err(|join_error| format!("hardware sample task failed: {join_error}"))??
     };
 
     *state.last_snapshot.write().await = Some(snapshot.clone());
@@ -199,8 +208,8 @@ pub async fn update_app_settings(
         settings.clone()
     };
 
-    app.emit("settings:updated", settings.clone())
-        .map_err(|error| format!("failed to emit settings:updated: {error}"))?;
+    app.emit(SETTINGS_UPDATED, settings.clone())
+        .map_err(|error| format!("failed to emit {SETTINGS_UPDATED}: {error}"))?;
 
     taskbar_embed::sync_taskbar_monitor(&app).await;
 
@@ -637,8 +646,8 @@ pub async fn show_main_window(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 pub async fn show_main_route(route: String, app: AppHandle) -> Result<(), String> {
     window_manager::show_window(&app, "main", true).await?;
-    app.emit("ui:navigate-main", route)
-        .map_err(|error| format!("failed to emit ui:navigate-main: {error}"))
+    app.emit(UI_NAVIGATE_MAIN, route)
+        .map_err(|error| format!("failed to emit {UI_NAVIGATE_MAIN}: {error}"))
 }
 
 #[tauri::command]
@@ -763,8 +772,8 @@ pub async fn toggle_pet_panel(app: AppHandle) -> Result<(), String> {
 }
 
 fn emit_corecat_interaction_state(app: &AppHandle, state: &'static str) -> Result<(), String> {
-    app.emit("corecat:interaction-state", state)
-        .map_err(|error| format!("failed to emit corecat:interaction-state: {error}"))
+    app.emit(CORECAT_INTERACTION_STATE, state)
+        .map_err(|error| format!("failed to emit {CORECAT_INTERACTION_STATE}: {error}"))
 }
 
 #[tauri::command]
@@ -799,8 +808,8 @@ pub async fn update_workshop_state(
         w.clone()
     };
 
-    app.emit("workshop:updated", next_workshop.clone())
-        .map_err(|error| format!("failed to emit workshop:updated: {error}"))?;
+    app.emit(WORKSHOP_UPDATED, next_workshop.clone())
+        .map_err(|error| format!("failed to emit {WORKSHOP_UPDATED}: {error}"))?;
     record_workshop_upgrade_events(&app, &previous_workshop, &next_workshop).await;
     Ok(next_workshop)
 }
