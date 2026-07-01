@@ -4,6 +4,7 @@ import { useHardwareStore } from "../../stores/hardwareStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import type { HardwareSnapshot } from "../../types/hardware";
 import type { MonitorBarMode, MonitorMetric } from "../../types/settings";
+import { getDisplayedMetrics } from "../../services/monitorMetrics";
 
 const defaultTaskbarMetrics: MonitorMetric[] = ["Cpu", "Ram", "Gpu", "Network"];
 
@@ -90,17 +91,6 @@ export function TaskbarMonitorWindow() {
       </div>
     </div>
   );
-}
-
-function getDisplayedMetrics(
-  metrics: MonitorMetric[],
-  mode: MonitorBarMode,
-): MonitorMetric[] {
-  if (mode === "Micro") {
-    return metrics.slice(0, 2);
-  }
-
-  return metrics;
 }
 
 function getTaskbarMetricCell(
