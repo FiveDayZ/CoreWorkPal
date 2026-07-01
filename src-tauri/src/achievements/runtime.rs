@@ -925,7 +925,6 @@ fn evaluate_text_condition(
     }
 
     if condition.contains("任意模块任一升级轨等级")
-        || condition.contains("任意模块任一升级轨等级")
         || condition.contains("第一条满级轨道")
     {
         return Some(compare_progress(
