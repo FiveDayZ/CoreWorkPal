@@ -79,6 +79,14 @@ async fn flush_input_activity(app: &AppHandle, delta: InputActivityDelta) {
         report
     };
 
+    // Record real input so the pet's health/focus logic knows the user is active.
+    // Acquired in a separate lock block (after work_logs released) to keep lock
+    // ordering simple and avoid holding two write guards at once.
+    if !delta.is_empty() {
+        let mut runtime = state.cat_runtime.write().await;
+        runtime.last_input_at = Some(timestamp);
+    }
+
     if let Err(error) = app.emit(WORKLOG_UPDATED, updated_report) {
         tracing::warn!("failed to emit {WORKLOG_UPDATED} after input activity: {error}");
     }

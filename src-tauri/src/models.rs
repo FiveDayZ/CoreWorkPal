@@ -185,6 +185,12 @@ pub enum CatState {
     Interactive,
     Celebrate,
     Hidden,
+    /// Continuously working too long without a real break. Reuses existing
+    /// animation; surfaced via the speech bubble so the user is nudged to pause.
+    Fatigued,
+    /// No input for an extended period while the machine stayed "busy" — a
+    /// soft prompt to step away from the desk. Reuses existing animation.
+    NeedsBreak,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -225,6 +231,13 @@ pub struct CatRuntimeState {
     pub temperature_safe_since: Option<i64>,
     /// Whether at least one pet state has been emitted since launch.
     pub has_emitted_cat_state: bool,
+    /// Timestamp of the most recent user input (mouse click / key press).
+    /// Drives distraction detection for focus sessions and break reminders.
+    pub last_input_at: Option<i64>,
+    /// When the current stretch of continuous work began (input present and not
+    /// in a break). Cleared after a sufficiently long idle gap so we only nudge
+    /// the user when they have genuinely been at it for a long stretch.
+    pub continuous_work_since: Option<i64>,
 }
 
 impl Default for CatRuntimeState {
@@ -235,6 +248,8 @@ impl Default for CatRuntimeState {
             last_cat_state_changed_at: current_timestamp_ms(),
             temperature_safe_since: None,
             has_emitted_cat_state: false,
+            last_input_at: None,
+            continuous_work_since: None,
         }
     }
 }
