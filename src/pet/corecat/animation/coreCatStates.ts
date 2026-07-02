@@ -55,6 +55,12 @@ export function mapCatStateToCoreCatState(
     case "RepairHeavy":
     case "RepairLight":
       return "repairing";
+    case "DeepWork":
+      // Heads-down focus: reuse the repairing animation (busy tinkering).
+      return "repairing";
+    case "Distracted":
+      // Off-task: reuse idle; the bubble carries the nudge.
+      return "idle";
     case "Interactive":
     case "Idle":
     default:

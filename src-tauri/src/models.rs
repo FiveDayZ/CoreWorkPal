@@ -191,6 +191,10 @@ pub enum CatState {
     /// No input for an extended period while the machine stayed "busy" — a
     /// soft prompt to step away from the desk. Reuses existing animation.
     NeedsBreak,
+    /// An active focus session is underway and the user is engaged.
+    DeepWork,
+    /// An active focus session is underway but the user appears distracted.
+    Distracted,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -238,6 +242,12 @@ pub struct CatRuntimeState {
     /// in a break). Cleared after a sufficiently long idle gap so we only nudge
     /// the user when they have genuinely been at it for a long stretch.
     pub continuous_work_since: Option<i64>,
+    /// id of the currently active focus session, if any. Drives the DeepWork /
+    /// Distracted pet states.
+    pub active_focus_session_id: Option<String>,
+    /// Timestamp of the most recently counted distraction, so a single
+    /// continuous distracted stretch only increments distraction_count once.
+    pub last_distraction_at: Option<i64>,
 }
 
 impl Default for CatRuntimeState {
@@ -250,6 +260,8 @@ impl Default for CatRuntimeState {
             has_emitted_cat_state: false,
             last_input_at: None,
             continuous_work_since: None,
+            active_focus_session_id: None,
+            last_distraction_at: None,
         }
     }
 }
@@ -543,6 +555,62 @@ impl Default for WorkshopState {
             last_daily_reset_date: Local::now().format("%Y-%m-%d").to_string(),
         }
     }
+}
+
+/// Lifecycle of a single focus ritual session.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum FocusSessionStatus {
+    /// Running now; the user is (nominally) heads-down on the task.
+    Active,
+    /// Completed normally; focus_quality has been computed.
+    Completed,
+    /// The user ended it early.
+    Abandoned,
+}
+
+/// One "deliver a task to CoreCat and stay focused" ritual session.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct FocusSession {
+    /// Stable id (timestamp-derived) so the frontend can track the live session.
+    pub id: String,
+    /// What the user said they'd focus on.
+    pub task_label: String,
+    /// Planned duration the user committed to (25/50 min, etc.).
+    pub planned_duration_seconds: u64,
+    pub started_at: i64,
+    /// Set when the session leaves the Active state.
+    pub ended_at: Option<i64>,
+    pub status: FocusSessionStatus,
+    /// Times the user was flagged as distracted during this session.
+    pub distraction_count: u32,
+    /// 0.0..=1.0, computed on completion from distraction_count.
+    pub focus_quality: f64,
+}
+
+impl Default for FocusSession {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            task_label: String::new(),
+            planned_duration_seconds: 25 * 60,
+            started_at: 0,
+            ended_at: None,
+            status: FocusSessionStatus::Active,
+            distraction_count: 0,
+            focus_quality: 0.0,
+        }
+    }
+}
+
+/// Persisted history of focus sessions (only completed/abandoned matter for
+/// stats, but Active is kept too so a crash mid-session can be recovered).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct FocusSessionBook {
+    pub schema_version: u32,
+    pub sessions: Vec<FocusSession>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

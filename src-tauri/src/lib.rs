@@ -111,6 +111,9 @@ pub fn run() {
             commands::save_window_position,
             commands::exit_app,
             commands::update_workshop_state,
+            commands::start_focus_session,
+            commands::complete_focus_session,
+            commands::abandon_focus_session,
             commands::updater::check_update,
             commands::updater::download_update,
             commands::updater::install_update

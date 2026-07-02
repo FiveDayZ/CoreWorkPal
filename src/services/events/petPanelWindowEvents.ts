@@ -1,7 +1,9 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { useFocusStore } from "../../stores/focusStore";
 import { useHardwareStore } from "../../stores/hardwareStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useWorkshopStore } from "../../stores/workshopStore";
+import type { FocusSessionBook } from "../../types/focus";
 import type { HardwareMetricsSnapshot } from "../../types/hardware";
 import type { AppSettings } from "../../types/settings";
 import type { WorkshopState } from "../../types/workshop";
@@ -28,6 +30,12 @@ export function registerPetPanelWindowEvents() {
   unlisteners.push(
     listen<WorkshopState>("workshop:updated", (event) => {
       useWorkshopStore.getState().setWorkshopState(event.payload);
+    }),
+  );
+
+  unlisteners.push(
+    listen<FocusSessionBook>("focus:session-updated", (event) => {
+      useFocusStore.getState().setBook(event.payload);
     }),
   );
 
