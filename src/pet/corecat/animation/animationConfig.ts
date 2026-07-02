@@ -145,6 +145,8 @@ export const CORE_CAT_ANIMATION_CONFIG = {
     updateInstalling: 72,
     repairing: 68,
     sleep: 64,
+    fatigued: 66,
+    needsBreak: 63,
     memoryCrowded: 62,
     dataSorting: 36,
     scaredByMouse: 10,

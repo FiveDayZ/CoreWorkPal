@@ -26,6 +26,8 @@ export const coreCatAnimationStates: CoreCatAnimationState[] = [
   "achievementPop",
   "errorGlitch",
   "lowPowerStatic",
+  "fatigued",
+  "needsBreak",
 ];
 
 export const coreCatStatePriority: Record<CoreCatAnimationState, number> =
@@ -43,13 +45,11 @@ export function mapCatStateToCoreCatState(
       return "dataSorting";
     case "Sleep":
     case "Hidden":
-    case "Fatigued":
-      // No dedicated tired animation yet; reuse sleep and let the speech bubble
-      // carry the "take a break" message. Art can replace this later.
       return "sleep";
+    case "Fatigued":
+      return "fatigued";
     case "NeedsBreak":
-      // Reuse idle; the bubble nudges the user to step away.
-      return "idle";
+      return "needsBreak";
     case "Celebrate":
       return "celebrate";
     case "RepairHeavy":

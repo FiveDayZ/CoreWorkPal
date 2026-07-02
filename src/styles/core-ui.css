@@ -1037,11 +1037,24 @@ label {
   background: var(--color-surface-glass);
   box-shadow: inset -2px -2px 0px #000, inset 2px 2px 0px rgba(255, 255, 255, 0.05);
   border-radius: 0px;
-  overflow: hidden;
+  /* Allow the panel to scroll if content (e.g. the focus block) exceeds the
+     window height, instead of clipping it invisibly. */
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
   transform-origin: right 48px;
   will-change: transform, opacity;
   animation: panel-elastic-open 150ms steps(3) forwards;
   cursor: move;
+}
+
+.cwp-pet-panel::-webkit-scrollbar {
+  width: 4px;
+}
+
+.cwp-pet-panel::-webkit-scrollbar-thumb {
+  background: var(--color-border-soft, rgba(255, 255, 255, 0.15));
+  border-radius: 2px;
 }
 
 .cwp-pet-panel-root.is-closing .cwp-pet-panel {
@@ -2146,6 +2159,111 @@ label {
 .cwp-hero-btn:active {
   border-color: var(--color-bg-950) rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.25) var(--color-bg-950);
   padding: 1px 0px -1px 2px;
+}
+
+/* ── Dashboard focus ritual card ─────────────────────────────────────── */
+.cwp-dashboard-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-border-soft, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  background: var(--color-surface-900, rgba(0, 0, 0, 0.25));
+}
+
+.cwp-dashboard-focus-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-tech-cyan, #5cdfff);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cwp-dashboard-focus-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cwp-dashboard-focus-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-surface-800, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--color-border-soft, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  outline: none;
+}
+
+.cwp-dashboard-focus-input:focus {
+  border-color: var(--color-tech-cyan, #5cdfff);
+}
+
+.cwp-dashboard-focus-options {
+  display: flex;
+  gap: 8px;
+}
+
+.cwp-dashboard-focus-chip {
+  flex: 1;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border-soft, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.cwp-dashboard-focus-chip.is-active {
+  color: var(--color-tech-cyan, #5cdfff);
+  border-color: var(--color-tech-cyan, #5cdfff);
+}
+
+.cwp-dashboard-focus-error {
+  font-size: 11px;
+  color: var(--color-danger, #ff6b6b);
+}
+
+.cwp-dashboard-focus-active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.cwp-dashboard-focus-task {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.cwp-dashboard-focus-timer {
+  font-family: var(--font-pixel-title, monospace);
+  font-size: 32px;
+  color: var(--color-tech-cyan, #5cdfff);
+  letter-spacing: 3px;
+}
+
+.cwp-dashboard-focus-meta {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.cwp-dashboard-focus-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.cwp-dashboard-focus-actions .cwp-hero-btn {
+  flex: 1;
 }
 
 .cwp-metric-grid {

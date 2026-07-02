@@ -189,7 +189,7 @@ impl LazyWindowSpec {
                 title: "CoreWorkPal Pet Panel",
                 url: "/pet-panel",
                 width: 300.0,
-                height: 360.0,
+                height: 520.0,
                 decorations: false,
                 transparent: true,
                 resizable: false,
