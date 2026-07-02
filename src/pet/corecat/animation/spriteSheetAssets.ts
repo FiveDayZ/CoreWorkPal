@@ -79,6 +79,8 @@ const STATE_TO_STEM: Record<CoreCatAnimationState, string> = {
   achievementPop: "AchievementPop",
   errorGlitch: "ErrorGlitch",
   lowPowerStatic: "Sleep_Low_Power",
+  fatigued: "Fatigued",
+  needsBreak: "NeedsBreak",
 };
 
 /** File stem for the rapid-click dizzy variant. */

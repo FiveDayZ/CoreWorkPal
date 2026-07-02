@@ -46,7 +46,9 @@ export type CoreCatAnimationState =
   | "updateInstalling"
   | "achievementPop"
   | "errorGlitch"
-  | "lowPowerStatic";
+  | "lowPowerStatic"
+  | "fatigued"
+  | "needsBreak";
 
 export interface BoneTransform {
   x?: number;
