@@ -198,4 +198,4 @@ pnpm tauri build
 
 ---
 
-*CoreWorkPal v0.2.3 · MIT License · Made with ❤️ and a lot of pixel art*
+*CoreWorkPal v0.2.4 · MIT License · Made with ❤️ and a lot of pixel art*
