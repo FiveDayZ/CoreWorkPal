@@ -6273,3 +6273,207 @@ input[type="range"]::-moz-range-thumb,
     transform: rotate(360deg);
   }
 }
+
+/* ── Pet panel focus ritual ──────────────────────────────────────────── */
+.cwp-panel-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--color-border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  background: var(--color-surface-900, rgba(0, 0, 0, 0.2));
+}
+
+.cwp-panel-focus-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cwp-panel-focus-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--color-text);
+  background: var(--color-surface-800, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--color-border-soft, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  outline: none;
+}
+
+.cwp-panel-focus-input:focus {
+  border-color: var(--color-tech-cyan, #5cdfff);
+}
+
+.cwp-panel-focus-options {
+  display: flex;
+  gap: 6px;
+}
+
+.cwp-panel-focus-chip {
+  flex: 1;
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border-soft, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.cwp-panel-focus-chip.is-active {
+  color: var(--color-tech-cyan, #5cdfff);
+  border-color: var(--color-tech-cyan, #5cdfff);
+}
+
+.cwp-panel-focus-error {
+  font-size: 10px;
+  color: var(--color-danger, #ff6b6b);
+}
+
+.cwp-panel-focus-active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.cwp-panel-focus-task {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cwp-panel-focus-timer {
+  font-family: var(--font-pixel-title, monospace);
+  font-size: 22px;
+  color: var(--color-tech-cyan, #5cdfff);
+  letter-spacing: 2px;
+}
+
+.cwp-panel-focus-meta {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+}
+
+.cwp-panel-focus-actions {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.cwp-panel-focus-actions .cwp-compact-button {
+  flex: 1;
+}
+
+/* ── Rhythm heatmap (WorkLog > 节律 tab) ─────────────────────────────── */
+.cwp-rhythm-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px;
+}
+
+.cwp-rhythm-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.cwp-rhythm-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.cwp-rhythm-heatmap {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+}
+
+.cwp-rhythm-cell {
+  position: relative;
+  height: 44px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.cwp-rhythm-cell.is-peak {
+  border-color: var(--color-tech-cyan, #5cdfff);
+  box-shadow: 0 0 6px rgba(92, 223, 255, 0.5);
+}
+
+.cwp-rhythm-cell-label {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  padding-bottom: 2px;
+}
+
+.cwp-rhythm-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 9px;
+  color: var(--color-text-secondary);
+}
+
+.cwp-rhythm-weekday {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cwp-rhythm-weekday-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cwp-rhythm-weekday-label {
+  width: 16px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.cwp-rhythm-weekday-bar-track {
+  flex: 1;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.cwp-rhythm-weekday-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-tech-cyan, #5cdfff), var(--color-brand-orange-strong, #ff9d4a));
+  border-radius: 5px;
+  transition: width 0.4s ease;
+}
+
+.cwp-rhythm-summary {
+  padding: 12px 14px;
+  background: var(--color-surface-900, rgba(0, 0, 0, 0.2));
+  border: 1px solid var(--color-border-soft, rgba(255, 255, 255, 0.08));
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text);
+}

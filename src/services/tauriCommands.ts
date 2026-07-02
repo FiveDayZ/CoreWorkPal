@@ -14,6 +14,8 @@ import type {
 import type { HardwareSnapshot } from "../types/hardware";
 import type { AppSettings, AppSettingsPatch } from "../types/settings";
 import type { WorkLogReport } from "../types/workLog";
+import type { FocusSessionBook } from "../types/focus";
+import type { RhythmProfile } from "../types/rhythm";
 import { defaultModuleLevels, type WorkshopState } from "../types/workshop";
 
 export type CoreCatInteractionAction = "pet" | "sortParts";
@@ -933,6 +935,63 @@ export async function getDailyWorkAssessmentTrend(
 
 export async function toggleProductionPaused(): Promise<AppSettings> {
   return invoke<AppSettings>("toggle_production_paused");
+}
+
+const emptyFocusBook: FocusSessionBook = { schemaVersion: 1, sessions: [] };
+
+export async function startFocusSession(
+  taskLabel: string,
+  durationMinutes: number,
+): Promise<FocusSessionBook> {
+  if (!isTauriRuntime()) {
+    return { ...emptyFocusBook };
+  }
+  return invoke<FocusSessionBook>("start_focus_session", {
+    taskLabel,
+    durationMinutes,
+  });
+}
+
+export async function completeFocusSession(
+  sessionId: string,
+): Promise<[FocusSessionBook, WorkshopState]> {
+  if (!isTauriRuntime()) {
+    return [{ ...emptyFocusBook }, { ...browserWorkshop }];
+  }
+  return invoke<[FocusSessionBook, WorkshopState]>("complete_focus_session", {
+    sessionId,
+  });
+}
+
+export async function abandonFocusSession(
+  sessionId: string,
+): Promise<FocusSessionBook> {
+  if (!isTauriRuntime()) {
+    return { ...emptyFocusBook };
+  }
+  return invoke<FocusSessionBook>("abandon_focus_session", { sessionId });
+}
+
+export async function getRhythmProfile(): Promise<RhythmProfile> {
+  if (!isTauriRuntime()) {
+    return {
+      hourBuckets: Array.from({ length: 24 }, (_, index) => ({
+        index,
+        activeSeconds: 0,
+        avgFocusScore: 0,
+        sampleDays: 0,
+      })),
+      weekdayBuckets: Array.from({ length: 7 }, (_, index) => ({
+        index,
+        activeSeconds: 0,
+        avgFocusScore: 0,
+        sampleDays: 0,
+      })),
+      peakHours: [],
+      summary: "浏览器预览模式下暂无节律数据。",
+    };
+  }
+  return invoke<RhythmProfile>("get_rhythm_profile");
 }
 
 export async function showMainWindow(): Promise<void> {

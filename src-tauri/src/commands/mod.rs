@@ -15,12 +15,13 @@ use crate::{
     },
     app_state::AppState,
     events::{
-        ACHIEVEMENT_UNLOCKED, CORECAT_INTERACTION_STATE, SETTINGS_UPDATED, UI_NAVIGATE_MAIN,
-        WORKSHOP_UPDATED,
+        ACHIEVEMENT_UNLOCKED, CORECAT_INTERACTION_STATE, FOCUS_SESSION_UPDATED, SETTINGS_UPDATED,
+        UI_NAVIGATE_MAIN, WORKSHOP_UPDATED,
     },
     models::{
-        current_timestamp_ms, today_key, AppSettings, AppSettingsPatch, DailyWorkAssessment,
-        DailyWorkAssessmentSummary, DailyWorkAssessmentTrend, HardwareSnapshot, WorkLogEntry,
+        build_rhythm_profile, current_timestamp_ms, today_key, AppSettings, AppSettingsPatch,
+        DailyWorkAssessment, DailyWorkAssessmentSummary, DailyWorkAssessmentTrend, FocusSession,
+        FocusSessionBook, FocusSessionStatus, HardwareSnapshot, RhythmProfile, WorkLogEntry,
         WorkLogReport, WorkshopState,
     },
     taskbar_embed,
@@ -315,6 +316,184 @@ pub async fn reward_corecat_interaction(
     Ok(next_workshop)
 }
 
+/// How strongly distraction erodes the session's quality and reward.
+const FOCUS_DISTRACTION_PENALTY: f64 = 0.15;
+const FOCUS_MIN_QUALITY: f64 = 0.4;
+/// Base parts/insight awarded per planned minute, scaled by focus_quality.
+const FOCUS_PARTS_PER_MINUTE: f64 = 8.0;
+const FOCUS_INSIGHT_PER_MINUTE: f64 = 0.5;
+
+/// Pure quality score for a completed focus session, clamped to [MIN, 1.0].
+/// Extracted so it can be unit-tested independently of the command path.
+pub(crate) fn compute_focus_quality(distraction_count: u32) -> f64 {
+    (1.0 - distraction_count as f64 * FOCUS_DISTRACTION_PENALTY)
+        .max(FOCUS_MIN_QUALITY)
+        .min(1.0)
+}
+
+#[tauri::command]
+pub async fn start_focus_session(
+    task_label: String,
+    duration_minutes: u64,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<FocusSessionBook, String> {
+    let trimmed = task_label.trim();
+    if trimmed.is_empty() {
+        return Err("任务名称不能为空".to_string());
+    }
+    let duration_minutes = duration_minutes.clamp(5, 180);
+    let duration_seconds = duration_minutes * 60;
+    let now = current_timestamp_ms();
+    let id = format!("focus-{now}");
+
+    let next_book = {
+        let mut sessions = state.focus_sessions.write().await;
+        // Only one active session at a time: abandon any prior active one.
+        for session in sessions.sessions.iter_mut() {
+            if session.status == FocusSessionStatus::Active {
+                session.status = FocusSessionStatus::Abandoned;
+                session.ended_at = Some(now);
+            }
+        }
+        sessions.sessions.push(FocusSession {
+            id: id.clone(),
+            task_label: trimmed.to_string(),
+            planned_duration_seconds: duration_seconds,
+            started_at: now,
+            ended_at: None,
+            status: FocusSessionStatus::Active,
+            distraction_count: 0,
+            focus_quality: 0.0,
+        });
+        if let Err(error) = state.storage.save_focus_sessions(&sessions) {
+            tracing::warn!("failed to save focus sessions: {error}");
+        }
+        sessions.clone()
+    };
+
+    // Mark the active session on the cat runtime so the pet state machine can
+    // enter DeepWork / Distracted. Lock acquired after focus_sessions released.
+    {
+        let mut runtime = state.cat_runtime.write().await;
+        runtime.active_focus_session_id = Some(id);
+        runtime.last_distraction_at = None;
+    }
+
+    let _ = emit_corecat_interaction_state(&app, "dataSorting");
+    app.emit(FOCUS_SESSION_UPDATED, next_book.clone())
+        .map_err(|error| format!("failed to emit {FOCUS_SESSION_UPDATED}: {error}"))?;
+    Ok(next_book)
+}
+
+#[tauri::command]
+pub async fn complete_focus_session(
+    session_id: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<(FocusSessionBook, WorkshopState), String> {
+    let now = current_timestamp_ms();
+    let (next_book, completed) = {
+        let mut sessions = state.focus_sessions.write().await;
+        let session = sessions
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id && s.status == FocusSessionStatus::Active)
+            .ok_or_else(|| format!("no active focus session with id {session_id}"))?;
+
+        let quality = compute_focus_quality(session.distraction_count);
+        session.focus_quality = quality;
+        session.status = FocusSessionStatus::Completed;
+        session.ended_at = Some(now);
+        let snapshot = session.clone();
+        if let Err(error) = state.storage.save_focus_sessions(&sessions) {
+            tracing::warn!("failed to save focus sessions: {error}");
+        }
+        (sessions.clone(), snapshot)
+    };
+
+    // Clear the active marker on the cat runtime.
+    {
+        let mut runtime = state.cat_runtime.write().await;
+        if runtime.active_focus_session_id.as_deref() == Some(session_id.as_str()) {
+            runtime.active_focus_session_id = None;
+        }
+    }
+
+    // Land the workshop reward, scaled by focus_quality.
+    let planned_minutes = completed.planned_duration_seconds / 60;
+    let parts_award = (planned_minutes as f64 * FOCUS_PARTS_PER_MINUTE * completed.focus_quality).round() as u32;
+    let insight_award = planned_minutes as f64 * FOCUS_INSIGHT_PER_MINUTE * completed.focus_quality;
+    let next_workshop = {
+        let mut workshop = state.workshop.write().await;
+        workshop.parts += parts_award as f64;
+        workshop.insight += insight_award;
+        workshop.today_parts += parts_award as f64;
+        workshop.today_insight += insight_award;
+        if let Err(error) = state.storage.save_workshop(&workshop) {
+            tracing::warn!("failed to save workshop after focus reward: {error}");
+        }
+        workshop.clone()
+    };
+
+    if let Err(error) = record_internal_achievement_event(
+        &app,
+        "focus.session.completed",
+        format!("focus.session:{}:{}", completed.id, now),
+        serde_json::json!({
+            "taskLabel": completed.task_label,
+            "plannedDurationSeconds": completed.planned_duration_seconds,
+            "distractionCount": completed.distraction_count,
+            "focusQuality": completed.focus_quality,
+        }),
+    )
+    .await
+    {
+        tracing::warn!("failed to record focus completion achievement event: {error}");
+    }
+
+    let _ = emit_corecat_interaction_state(&app, "celebrate");
+    app.emit(FOCUS_SESSION_UPDATED, next_book.clone())
+        .map_err(|error| format!("failed to emit {FOCUS_SESSION_UPDATED}: {error}"))?;
+    app.emit(WORKSHOP_UPDATED, next_workshop.clone())
+        .map_err(|error| format!("failed to emit {WORKSHOP_UPDATED}: {error}"))?;
+    Ok((next_book, next_workshop))
+}
+
+#[tauri::command]
+pub async fn abandon_focus_session(
+    session_id: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<FocusSessionBook, String> {
+    let now = current_timestamp_ms();
+    let next_book = {
+        let mut sessions = state.focus_sessions.write().await;
+        let session = sessions
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id && s.status == FocusSessionStatus::Active)
+            .ok_or_else(|| format!("no active focus session with id {session_id}"))?;
+        session.status = FocusSessionStatus::Abandoned;
+        session.ended_at = Some(now);
+        if let Err(error) = state.storage.save_focus_sessions(&sessions) {
+            tracing::warn!("failed to save focus sessions: {error}");
+        }
+        sessions.clone()
+    };
+
+    {
+        let mut runtime = state.cat_runtime.write().await;
+        if runtime.active_focus_session_id.as_deref() == Some(session_id.as_str()) {
+            runtime.active_focus_session_id = None;
+        }
+    }
+
+    app.emit(FOCUS_SESSION_UPDATED, next_book.clone())
+        .map_err(|error| format!("failed to emit {FOCUS_SESSION_UPDATED}: {error}"))?;
+    Ok(next_book)
+}
+
 #[tauri::command]
 pub async fn get_work_log_report(
     date: Option<String>,
@@ -406,6 +585,16 @@ pub async fn get_daily_work_assessment_trend(
     Ok(DailyWorkAssessmentTrend::from_summaries(&summaries))
 }
 
+#[tauri::command]
+pub async fn get_rhythm_profile(
+    state: State<'_, AppState>,
+) -> Result<RhythmProfile, String> {
+    // Aggregate over a generous window so the rhythm has enough signal.
+    let work_logs = state.work_logs.read().await;
+    let summaries = build_assessment_summaries(&work_logs.entries, 90);
+    Ok(build_rhythm_profile(&work_logs, &summaries))
+}
+
 fn build_assessment_summaries(
     entries: &BTreeMap<String, WorkLogEntry>,
     limit: usize,
@@ -481,6 +670,25 @@ fn entry_has_assessment_signal(entry: &WorkLogEntry) -> bool {
 #[cfg(test)]
 mod command_tests {
     use super::*;
+
+    #[test]
+    fn focus_quality_is_perfect_with_no_distractions() {
+        assert!((compute_focus_quality(0) - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn focus_quality_decays_with_each_distraction() {
+        // 0.15 penalty per distraction.
+        assert!((compute_focus_quality(1) - 0.85).abs() < 1e-9);
+        assert!((compute_focus_quality(2) - 0.70).abs() < 1e-9);
+    }
+
+    #[test]
+    fn focus_quality_floors_at_minimum_after_many_distractions() {
+        // 5+ distractions would go negative without the floor.
+        assert!((compute_focus_quality(5) - FOCUS_MIN_QUALITY).abs() < 1e-9);
+        assert!((compute_focus_quality(99) - FOCUS_MIN_QUALITY).abs() < 1e-9);
+    }
 
     #[test]
     fn assessment_history_is_newest_first_and_skips_empty_entries() {

@@ -11,6 +11,15 @@ const REPAIR_HEAVY_LOAD_THRESHOLD: f32 = 92.0;
 const TEMPERATURE_CHECK_ENTER_MIN_CELSIUS: f32 = 75.0;
 const TEMPERATURE_CHECK_EXIT_CELSIUS: f32 = 70.0;
 const TEMPERATURE_CHECK_EXIT_STABLE_MS: i64 = 5_000;
+/// After this much continuous work (with input present), CoreCat looks tired.
+const FATIGUED_AFTER_MS: i64 = 90 * 60 * 1000;
+/// Once input has been silent this long (while the machine stayed on), suggest
+/// a break — the user has likely been staring at the screen without interacting.
+const NEEDS_BREAK_AFTER_MS: i64 = 50 * 60 * 1000;
+/// Idle gap long enough that we no longer count the session as "continuous work".
+const CONTINUOUS_WORK_BREAK_MS: i64 = 5 * 60 * 1000;
+/// During a focus session, this much input silence counts as a distraction.
+pub const FOCUS_DISTRACTION_SILENCE_MS: i64 = 90 * 1000;
 
 pub struct PetStateService;
 
@@ -28,6 +37,18 @@ impl PetStateService {
         let payload = {
             let mut runtime = state.cat_runtime.write().await;
 
+            // Maintain the continuous-work marker from the input timestamp. We
+            // count a stretch as continuous while input is recent; a long enough
+            // gap ends the stretch (so the fatigue nudge resets after a real break).
+            let recent_input = runtime
+                .last_input_at
+                .is_some_and(|t| now_ms.saturating_sub(t) < CONTINUOUS_WORK_BREAK_MS);
+            if recent_input {
+                runtime.continuous_work_since.get_or_insert(now_ms);
+            } else {
+                runtime.continuous_work_since = None;
+            }
+
             let temperature_safe_since = next_temperature_safe_since(
                 &settings,
                 snapshot,
@@ -41,6 +62,9 @@ impl PetStateService {
                 &runtime.cat_state,
                 temperature_safe_since,
                 now_ms,
+                runtime.last_input_at,
+                runtime.continuous_work_since,
+                runtime.active_focus_session_id.as_deref(),
             );
 
             // Always advance the temperature-safe marker; it is derived from the
@@ -82,6 +106,9 @@ fn resolve_candidate_state(
     current: &CatState,
     temperature_safe_since: Option<i64>,
     now_ms: i64,
+    last_input_at: Option<i64>,
+    continuous_work_since: Option<i64>,
+    active_focus_session_id: Option<&str>,
 ) -> CatState {
     if !settings.is_cat_visible {
         return CatState::Hidden;
@@ -115,6 +142,35 @@ fn resolve_candidate_state(
 
     if is_sustained_busy_load(snapshot) {
         return CatState::RepairLight;
+    }
+
+    // Focus ritual takes priority over generic wellness nudges but yields to
+    // the system alerts above.
+    if active_focus_session_id.is_some() {
+        let distracted = last_input_at
+            .is_some_and(|t| now_ms.saturating_sub(t) >= FOCUS_DISTRACTION_SILENCE_MS);
+        return if distracted {
+            CatState::Distracted
+        } else {
+            CatState::DeepWork
+        };
+    }
+
+    // Health nudges: only when the machine is otherwise calm (no load/thermal
+    // condition above) so we never mask a real alert with a wellness message.
+    // No input for a long stretch while the app kept sampling → suggest a break.
+    if let Some(last) = last_input_at {
+        let silent_for = now_ms.saturating_sub(last);
+        if silent_for >= NEEDS_BREAK_AFTER_MS {
+            return CatState::NeedsBreak;
+        }
+    }
+
+    // Long continuous-work stretch with input present → fatigue nudge.
+    if let Some(since) = continuous_work_since {
+        if now_ms.saturating_sub(since) >= FATIGUED_AFTER_MS {
+            return CatState::Fatigued;
+        }
     }
 
     CatState::Idle
@@ -235,8 +291,12 @@ fn severity(state: &CatState) -> u8 {
         CatState::TemperatureCheck => 90,
         CatState::RepairHeavy => 80,
         CatState::MemoryCrowded => 70,
+        CatState::DeepWork => 60,
         CatState::RepairLight => 50,
+        CatState::NeedsBreak => 46,
         CatState::Sleep => 40,
+        CatState::Fatigued => 36,
+        CatState::Distracted => 34,
         CatState::DataSorting => 30,
         CatState::Celebrate => 15,
         CatState::Interactive => 8,
@@ -255,6 +315,10 @@ fn message_for_state(state: &CatState) -> &'static str {
         CatState::Sleep => "长时间未操作，CoreCat 进入休眠。",
         CatState::Interactive => "CoreCat 正在响应你的操作。",
         CatState::Celebrate => "清理完成，工坊状态良好。",
+        CatState::Fatigued => "连续工作很久啦，CoreCat 也想歇一会儿。",
+        CatState::NeedsBreak => "久坐提醒：起来活动一下，喝口水吧。",
+        CatState::DeepWork => "专注仪式进行中，CoreCat 陪你一起埋头干活。",
+        CatState::Distracted => "好像走神了？深呼吸，回到任务上来吧。",
         CatState::Hidden => "",
     }
 }
@@ -266,7 +330,16 @@ mod tests {
     use super::{resolve_candidate_state, should_transition};
 
     fn candidate(settings: &AppSettings, snapshot: &HardwareSnapshot) -> CatState {
-        resolve_candidate_state(settings, snapshot, &CatState::Idle, None, 1_000)
+        resolve_candidate_state(
+            settings,
+            snapshot,
+            &CatState::Idle,
+            None,
+            1_000,
+            None,
+            None,
+            None,
+        )
     }
 
     #[test]
@@ -379,6 +452,9 @@ mod tests {
                 &CatState::TemperatureCheck,
                 Some(1_000),
                 5_999,
+                None,
+                None,
+                None,
             ),
             CatState::TemperatureCheck
         );
@@ -389,6 +465,9 @@ mod tests {
                 &CatState::TemperatureCheck,
                 Some(1_000),
                 6_000,
+                None,
+                None,
+                None,
             ),
             CatState::Idle
         );
@@ -454,5 +533,115 @@ mod tests {
             &CatState::TemperatureCheck,
             0
         ));
+    }
+
+    #[test]
+    fn long_silent_stretch_suggests_a_break() {
+        let settings = AppSettings::default();
+        let snapshot = HardwareSnapshot::default();
+        // Last input 55 minutes ago → beyond the 50-min NeedsBreak threshold.
+        let now = 60 * 60 * 1000;
+        let last_input = Some(5 * 60 * 1000);
+
+        assert_eq!(
+            resolve_candidate_state(
+                &settings,
+                &snapshot,
+                &CatState::Idle,
+                None,
+                now,
+                last_input,
+                None,
+                None,
+            ),
+            CatState::NeedsBreak
+        );
+    }
+
+    #[test]
+    fn continuous_work_past_threshold_becomes_fatigued() {
+        let settings = AppSettings::default();
+        let snapshot = HardwareSnapshot::default();
+        // Input is recent (continuous), and the stretch began 100 minutes ago.
+        let now = 100 * 60 * 1000;
+        let last_input = Some(now - 10_000);
+        let continuous_since = Some(0);
+
+        assert_eq!(
+            resolve_candidate_state(
+                &settings,
+                &snapshot,
+                &CatState::Idle,
+                None,
+                now,
+                last_input,
+                continuous_since,
+                None,
+            ),
+            CatState::Fatigued
+        );
+    }
+
+    #[test]
+    fn recent_input_with_short_stretch_stays_idle() {
+        let settings = AppSettings::default();
+        let snapshot = HardwareSnapshot::default();
+        let now = 10 * 60 * 1000;
+
+        assert_eq!(
+            resolve_candidate_state(
+                &settings,
+                &snapshot,
+                &CatState::Idle,
+                None,
+                now,
+                Some(now - 5_000),
+                Some(0),
+                None,
+            ),
+            CatState::Idle
+        );
+    }
+
+    #[test]
+    fn active_focus_session_with_recent_input_is_deep_work() {
+        let settings = AppSettings::default();
+        let snapshot = HardwareSnapshot::default();
+        let now = 5 * 60 * 1000;
+
+        assert_eq!(
+            resolve_candidate_state(
+                &settings,
+                &snapshot,
+                &CatState::Idle,
+                None,
+                now,
+                Some(now - 5_000),
+                None,
+                Some("focus-1"),
+            ),
+            CatState::DeepWork
+        );
+    }
+
+    #[test]
+    fn active_focus_session_with_silent_input_is_distracted() {
+        let settings = AppSettings::default();
+        let snapshot = HardwareSnapshot::default();
+        let now = 5 * 60 * 1000;
+
+        assert_eq!(
+            resolve_candidate_state(
+                &settings,
+                &snapshot,
+                &CatState::Idle,
+                None,
+                now,
+                Some(now - 120_000), // 2 min silence > 90s threshold
+                None,
+                Some("focus-1"),
+            ),
+            CatState::Distracted
+        );
     }
 }

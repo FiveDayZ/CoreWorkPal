@@ -19,6 +19,7 @@ import {
 import { calculateSystemStability } from "../../services/systemStability";
 import { startDraggingCurrentWindow } from "../../services/windowApi";
 import { useHardwareStore } from "../../stores/hardwareStore";
+import { useFocusStore } from "../../stores/focusStore";
 import { usePetStore } from "../../stores/petStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useWorkshopStore } from "../../stores/workshopStore";
@@ -51,9 +52,18 @@ export function PetQuickPanelWindow() {
   const settings = useSettingsStore((state) => state.settings);
   const updateSettings = useSettingsStore((state) => state.updateSettings);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
+  const activeFocusSession = useFocusStore((state) => state.activeSession);
+  const isStartingFocus = useFocusStore((state) => state.isStarting);
+  const startFocus = useFocusStore((state) => state.start);
+  const completeFocus = useFocusStore((state) => state.complete);
+  const abandonFocus = useFocusStore((state) => state.abandon);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [focusTask, setFocusTask] = useState("");
+  const [focusMinutes, setFocusMinutes] = useState(25);
+  const [focusError, setFocusError] = useState<string | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
   const closeTimerRef = useRef<number | null>(null);
 
   const dragCandidateRef = useRef(false);
@@ -79,6 +89,34 @@ export function PetQuickPanelWindow() {
     },
     [],
   );
+
+  // Live countdown for an active focus session.
+  useEffect(() => {
+    if (!activeFocusSession) {
+      setRemainingSeconds(0);
+      return undefined;
+    }
+    function tick() {
+      if (!activeFocusSession) {
+        return;
+      }
+      const elapsed = Math.floor((Date.now() - activeFocusSession.startedAt) / 1000);
+      setRemainingSeconds(Math.max(0, activeFocusSession.plannedDurationSeconds - elapsed));
+    }
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [activeFocusSession]);
+
+  async function handleStartFocus() {
+    setFocusError(null);
+    try {
+      await startFocus(focusTask.trim(), focusMinutes);
+      setFocusTask("");
+    } catch (error) {
+      setFocusError(typeof error === "string" ? error : "无法开始专注会话");
+    }
+  }
 
   async function toggleMonitor() {
     await toggleMonitorBar();
@@ -241,6 +279,71 @@ export function PetQuickPanelWindow() {
           <div className="cwp-panel-status-item">
             稳定: <span>{stability.label}</span>
           </div>
+        </div>
+
+        {/* Focus ritual: deliver a task to CoreCat and stay heads-down. */}
+        <div className="cwp-panel-focus">
+          {activeFocusSession ? (
+            <div className="cwp-panel-focus-active">
+              <div className="cwp-panel-focus-task" title={activeFocusSession.taskLabel}>
+                🎯 {activeFocusSession.taskLabel}
+              </div>
+              <div className="cwp-panel-focus-timer">
+                {String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:
+                {String(remainingSeconds % 60).padStart(2, "0")}
+              </div>
+              <div className="cwp-panel-focus-meta">
+                分心 {activeFocusSession.distractionCount} 次
+              </div>
+              <div className="cwp-panel-focus-actions">
+                <CompactButton onClick={() => void completeFocus()} variant="primary">
+                  完成
+                </CompactButton>
+                <CompactButton onClick={() => void abandonFocus()}>放弃</CompactButton>
+              </div>
+            </div>
+          ) : (
+            <div className="cwp-panel-focus-setup">
+              <input
+                className="cwp-panel-focus-input"
+                type="text"
+                placeholder="向 CoreCat 交付一个任务…"
+                value={focusTask}
+                maxLength={40}
+                onChange={(event) => setFocusTask(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && focusTask.trim() && !isStartingFocus) {
+                    void handleStartFocus();
+                  }
+                }}
+              />
+              <div className="cwp-panel-focus-options">
+                {[25, 50].map((minutes) => (
+                  <button
+                    key={minutes}
+                    type="button"
+                    className={
+                      "cwp-panel-focus-chip" +
+                      (focusMinutes === minutes ? " is-active" : "")
+                    }
+                    onClick={() => setFocusMinutes(minutes)}
+                  >
+                    {minutes} 分钟
+                  </button>
+                ))}
+              </div>
+              {focusError ? (
+                <div className="cwp-panel-focus-error">{focusError}</div>
+              ) : null}
+              <CompactButton
+                onClick={() => void handleStartFocus()}
+                variant="primary"
+                disabled={!focusTask.trim() || isStartingFocus}
+              >
+                {isStartingFocus ? "开始中…" : "开始专注"}
+              </CompactButton>
+            </div>
+          )}
         </div>
 
         <div className="cwp-panel-button-grid">

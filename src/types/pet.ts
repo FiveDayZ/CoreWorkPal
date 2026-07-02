@@ -8,7 +8,11 @@ export type CatState =
   | "Sleep"
   | "Interactive"
   | "Celebrate"
-  | "Hidden";
+  | "Hidden"
+  | "Fatigued"
+  | "NeedsBreak"
+  | "DeepWork"
+  | "Distracted";
 
 export interface CatStateChangedEvent {
   timestamp: number;

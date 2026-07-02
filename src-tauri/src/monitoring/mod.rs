@@ -12,9 +12,9 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::{
     commands::record_internal_achievement_event,
     app_state::AppState,
-    events::{HARDWARE_METRICS, WORKLOG_UPDATED, WORKSHOP_UPDATED},
-    models::{current_timestamp_ms, HardwareMetricsSnapshot, HardwareSnapshot},
-    pet::PetStateService,
+    events::{FOCUS_SESSION_UPDATED, HARDWARE_METRICS, WORKLOG_UPDATED, WORKSHOP_UPDATED},
+    models::{current_timestamp_ms, FocusSessionStatus, HardwareMetricsSnapshot, HardwareSnapshot},
+    pet::{PetStateService, FOCUS_DISTRACTION_SILENCE_MS},
     workshop::ProductionService,
 };
 
@@ -123,6 +123,56 @@ async fn update_work_log_for_snapshot(app: &AppHandle, snapshot: &HardwareSnapsh
 
     if let Err(error) = app.emit(WORKLOG_UPDATED, updated_report) {
         tracing::warn!("failed to emit {WORKLOG_UPDATED}: {error}");
+    }
+
+    // Focus-session distraction detection: if a session is active and input has
+    // been silent past the threshold, count one distraction (deduped per
+    // continuous silent stretch via last_distraction_at).
+    record_focus_distraction_if_needed(app, snapshot.timestamp).await;
+}
+
+async fn record_focus_distraction_if_needed(app: &AppHandle, now_ms: i64) {
+    let state = app.state::<AppState>();
+
+    // Step 1: under the cat_runtime lock, decide whether this tick should count
+    // a distraction and capture the target session id.
+    let session_id = {
+        let mut runtime = state.cat_runtime.write().await;
+        let Some(session_id) = runtime.active_focus_session_id.clone() else {
+            return;
+        };
+        let silent_for = runtime
+            .last_input_at
+            .map(|t| now_ms.saturating_sub(t))
+            .unwrap_or(i64::MAX);
+        let already_counted_this_stretch = runtime
+            .last_distraction_at
+            .is_some_and(|t| now_ms.saturating_sub(t) < FOCUS_DISTRACTION_SILENCE_MS);
+        if silent_for < FOCUS_DISTRACTION_SILENCE_MS || already_counted_this_stretch {
+            return;
+        }
+        runtime.last_distraction_at = Some(now_ms);
+        session_id
+    };
+
+    // Step 2: under the focus_sessions lock, increment the counter.
+    let next_book = {
+        let mut sessions = state.focus_sessions.write().await;
+        if let Some(session) = sessions
+            .sessions
+            .iter_mut()
+            .find(|s| s.id == session_id && s.status == FocusSessionStatus::Active)
+        {
+            session.distraction_count = session.distraction_count.saturating_add(1);
+            if let Err(error) = state.storage.save_focus_sessions(&sessions) {
+                tracing::warn!("failed to save focus sessions on distraction: {error}");
+            }
+        }
+        sessions.clone()
+    };
+
+    if let Err(error) = app.emit(FOCUS_SESSION_UPDATED, next_book) {
+        tracing::warn!("failed to emit {FOCUS_SESSION_UPDATED}: {error}");
     }
 }
 

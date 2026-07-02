@@ -9,7 +9,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
     achievements::AchievementBook,
-    models::{AppSettings, LayoutState, WorkLogBook, WorkshopState, APP_SETTINGS_SCHEMA_VERSION},
+    models::{AppSettings, FocusSessionBook, LayoutState, WorkLogBook, WorkshopState, APP_SETTINGS_SCHEMA_VERSION},
 };
 
 #[derive(Debug)]
@@ -79,6 +79,14 @@ impl StorageService {
 
     pub fn save_work_logs(&self, work_logs: &WorkLogBook) -> Result<(), String> {
         self.write_json("work_logs.json", work_logs)
+    }
+
+    pub fn load_or_create_focus_sessions(&self) -> Result<FocusSessionBook, String> {
+        self.load_or_create("focus_sessions.json")
+    }
+
+    pub fn save_focus_sessions(&self, sessions: &FocusSessionBook) -> Result<(), String> {
+        self.write_json("focus_sessions.json", sessions)
     }
 
     pub fn load_or_create_achievements(&self) -> Result<AchievementBook, String> {

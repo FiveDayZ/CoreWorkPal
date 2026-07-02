@@ -31,3 +31,8 @@ pub const UI_NAVIGATE_MAIN: &str = "ui:navigate-main";
 
 /// Emitted by the updater with incremental download progress.
 pub const UPDATE_PROGRESS: &str = "update:progress";
+
+/// Emitted when a focus session starts, is completed, or is abandoned.
+/// Payload is the updated `FocusSessionBook` (so the frontend always has the
+/// full list + the live active session in one shape).
+pub const FOCUS_SESSION_UPDATED: &str = "focus:session-updated";
