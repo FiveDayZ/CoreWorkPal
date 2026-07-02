@@ -3,6 +3,7 @@ import {
   getDailyWorkAssessment,
   getDailyWorkAssessmentHistory,
   getDailyWorkAssessmentTrend,
+  getRhythmProfile,
   getWorkLogReport,
 } from "../services/tauriCommands";
 import type {
@@ -10,6 +11,7 @@ import type {
   DailyWorkAssessmentSummary,
   DailyWorkAssessmentTrend,
 } from "../types/dailyWorkAssessment";
+import type { RhythmProfile } from "../types/rhythm";
 import type { WorkLogReport } from "../types/workLog";
 
 export interface WorkLogStore {
@@ -17,12 +19,14 @@ export interface WorkLogStore {
   assessment: DailyWorkAssessment | null;
   assessmentHistory: DailyWorkAssessmentSummary[];
   assessmentTrend: DailyWorkAssessmentTrend | null;
+  rhythmProfile: RhythmProfile | null;
   selectedDate: string;
   setReport: (report: WorkLogReport) => void;
   setAssessment: (assessment: DailyWorkAssessment) => void;
   setSelectedDate: (date: string) => void;
   loadAssessmentHistory: (limit?: number) => Promise<void>;
   loadAssessmentTrend: (limit?: number) => Promise<void>;
+  loadRhythmProfile: () => Promise<void>;
   loadWorkLogReport: (date?: string) => Promise<void>;
 }
 
@@ -35,6 +39,7 @@ export const useWorkLogStore = create<WorkLogStore>((set, get) => ({
   assessment: null,
   assessmentHistory: [],
   assessmentTrend: null,
+  rhythmProfile: null,
   selectedDate: todayKey(),
   setReport: (report) => set({ report }),
   setAssessment: (assessment) => set({ assessment }),
@@ -46,6 +51,10 @@ export const useWorkLogStore = create<WorkLogStore>((set, get) => ({
   loadAssessmentTrend: async (limit) => {
     const assessmentTrend = await getDailyWorkAssessmentTrend(limit);
     set({ assessmentTrend });
+  },
+  loadRhythmProfile: async () => {
+    const rhythmProfile = await getRhythmProfile();
+    set({ rhythmProfile });
   },
   loadWorkLogReport: async (date) => {
     const selectedDate = date ?? get().selectedDate;

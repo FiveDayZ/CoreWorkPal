@@ -19,9 +19,10 @@ use crate::{
         UI_NAVIGATE_MAIN, WORKSHOP_UPDATED,
     },
     models::{
-        current_timestamp_ms, today_key, AppSettings, AppSettingsPatch, DailyWorkAssessment,
-        DailyWorkAssessmentSummary, DailyWorkAssessmentTrend, FocusSession, FocusSessionBook,
-        FocusSessionStatus, HardwareSnapshot, WorkLogEntry, WorkLogReport, WorkshopState,
+        build_rhythm_profile, current_timestamp_ms, today_key, AppSettings, AppSettingsPatch,
+        DailyWorkAssessment, DailyWorkAssessmentSummary, DailyWorkAssessmentTrend, FocusSession,
+        FocusSessionBook, FocusSessionStatus, HardwareSnapshot, RhythmProfile, WorkLogEntry,
+        WorkLogReport, WorkshopState,
     },
     taskbar_embed,
     window_manager,
@@ -582,6 +583,16 @@ pub async fn get_daily_work_assessment_trend(
     let summaries = build_assessment_summaries(&work_logs.entries, limit);
 
     Ok(DailyWorkAssessmentTrend::from_summaries(&summaries))
+}
+
+#[tauri::command]
+pub async fn get_rhythm_profile(
+    state: State<'_, AppState>,
+) -> Result<RhythmProfile, String> {
+    // Aggregate over a generous window so the rhythm has enough signal.
+    let work_logs = state.work_logs.read().await;
+    let summaries = build_assessment_summaries(&work_logs.entries, 90);
+    Ok(build_rhythm_profile(&work_logs, &summaries))
 }
 
 fn build_assessment_summaries(

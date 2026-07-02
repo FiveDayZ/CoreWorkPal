@@ -9,6 +9,7 @@ import type {
   WorkTimelineSegment,
 } from "../../types/dailyWorkAssessment";
 import type { WorkLogReport } from "../../types/workLog";
+import type { RhythmProfile } from "../../types/rhythm";
 import { formatBytes, formatDuration } from "../../services/formatters";
 import { copyTextToClipboard } from "../../services/clipboard";
 import { trackAchievementEvent } from "../../services/tauriCommands";
@@ -62,7 +63,8 @@ type WorkLogTab =
   | "workprint"
   | "timeline"
   | "insights"
-  | "dimensions";
+  | "dimensions"
+  | "rhythm";
 
 const workLogTabs: Array<{ id: WorkLogTab; label: string }> = [
   { id: "overview", label: "概览" },
@@ -72,6 +74,7 @@ const workLogTabs: Array<{ id: WorkLogTab; label: string }> = [
   { id: "timeline", label: "时间线" },
   { id: "insights", label: "进程" },
   { id: "dimensions", label: "五维" },
+  { id: "rhythm", label: "节律" },
 ];
 
 const WORKLOG_HISTORY_LIMIT = 370;
@@ -89,6 +92,8 @@ export function WorkLogPage() {
     (state) => state.loadAssessmentHistory,
   );
   const loadAssessmentTrend = useWorkLogStore((state) => state.loadAssessmentTrend);
+  const loadRhythmProfile = useWorkLogStore((state) => state.loadRhythmProfile);
+  const rhythmProfile = useWorkLogStore((state) => state.rhythmProfile);
   const loadWorkLogReport = useWorkLogStore((state) => state.loadWorkLogReport);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<WorkLogTab>("overview");
@@ -103,7 +108,8 @@ export function WorkLogPage() {
   useEffect(() => {
     void loadAssessmentHistory(WORKLOG_HISTORY_LIMIT);
     void loadAssessmentTrend(RECENT_DATE_SHORTCUT_DAYS);
-  }, [loadAssessmentHistory, loadAssessmentTrend]);
+    void loadRhythmProfile();
+  }, [loadAssessmentHistory, loadAssessmentTrend, loadRhythmProfile]);
 
   const currentReport = report;
   const currentAssessment = assessment;
@@ -301,6 +307,10 @@ export function WorkLogPage() {
             isToday={isToday}
             report={currentReport}
           />
+        )}
+
+        {activeTab === "rhythm" && (
+          <RhythmHeatmapPanel profile={rhythmProfile} />
         )}
       </div>
 
@@ -1534,4 +1544,79 @@ function rarityColor(tier?: string) {
     default:
       return "#9eb4ca";
   }
+}
+
+function RhythmHeatmapPanel({ profile }: { profile: RhythmProfile | null }) {
+  if (!profile) {
+    return (
+      <div className="cwp-rhythm-empty">正在分析你的工作节律…</div>
+    );
+  }
+
+  const maxActive = Math.max(
+    1,
+    ...profile.hourBuckets.map((bucket) => bucket.activeSeconds),
+  );
+
+  return (
+    <div className="cwp-rhythm-panel">
+      <div className="cwp-rhythm-section">
+        <div className="cwp-rhythm-section-title">每日时段节律</div>
+        <div className="cwp-rhythm-heatmap">
+          {profile.hourBuckets.map((bucket) => {
+            const intensity = bucket.activeSeconds / maxActive;
+            const isPeak = profile.peakHours.includes(bucket.index);
+            return (
+              <div
+                key={bucket.index}
+                className={"cwp-rhythm-cell" + (isPeak ? " is-peak" : "")}
+                style={{
+                  background: `rgba(92, 223, 255, ${0.08 + intensity * 0.85})`,
+                }}
+                title={`${bucket.index}:00 — 活跃 ${formatDuration(bucket.activeSeconds)} / ${bucket.sampleDays} 天`}
+              >
+                <span className="cwp-rhythm-cell-label">
+                  {String(bucket.index).padStart(2, "0")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="cwp-rhythm-axis">
+          <span>00</span>
+          <span>06</span>
+          <span>12</span>
+          <span>18</span>
+          <span>23</span>
+        </div>
+      </div>
+
+      <div className="cwp-rhythm-section">
+        <div className="cwp-rhythm-section-title">每周分布</div>
+        <div className="cwp-rhythm-weekday">
+          {profile.weekdayBuckets.map((bucket, index) => {
+            const weekdayMax = Math.max(
+              1,
+              ...profile.weekdayBuckets.map((b) => b.activeSeconds),
+            );
+            const ratio = bucket.activeSeconds / weekdayMax;
+            const labels = ["一", "二", "三", "四", "五", "六", "日"];
+            return (
+              <div key={index} className="cwp-rhythm-weekday-row">
+                <span className="cwp-rhythm-weekday-label">{labels[index]}</span>
+                <div className="cwp-rhythm-weekday-bar-track">
+                  <div
+                    className="cwp-rhythm-weekday-bar"
+                    style={{ width: `${Math.max(2, ratio * 100)}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="cwp-rhythm-summary">{profile.summary}</div>
+    </div>
+  );
 }

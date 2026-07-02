@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use chrono::{Duration, Local, NaiveDate, TimeZone};
+use chrono::{Datelike, Duration, Local, NaiveDate, TimeZone, Timelike};
 use serde::{Deserialize, Serialize};
 
 const WORK_LOG_TIME_SLICE_MS: i64 = 15 * 60 * 1000;
@@ -1105,6 +1105,31 @@ pub struct DailyWorkAssessmentSummary {
     pub badge_ids: Vec<String>,
     pub has_timeline: bool,
     pub has_data: bool,
+}
+
+/// One cell of the circadian-rhythm heatmap: aggregate of all historical
+/// 15-min slices that fell into a given wall-clock hour (0-23) or weekday (0-6).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RhythmBucket {
+    /// 0-23 for hour buckets, 0-6 (Mon-Sun) for weekday buckets.
+    pub index: u8,
+    pub active_seconds: u64,
+    /// Average daily work-print score for slices in this bucket, 0 if unknown.
+    pub avg_focus_score: f64,
+    /// How many distinct days contributed data to this bucket.
+    pub sample_days: u32,
+}
+
+/// A user's personal activity rhythm, aggregated from work-log time slices.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RhythmProfile {
+    pub hour_buckets: Vec<RhythmBucket>,
+    pub weekday_buckets: Vec<RhythmBucket>,
+    /// Hours (0-23) ranked highest by combined activity + focus, top 3.
+    pub peak_hours: Vec<u8>,
+    pub summary: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2785,6 +2810,121 @@ fn format_time_slice_label(timestamp: i64) -> String {
         .to_string()
 }
 
+/// Aggregate a user's work-log time slices into a 24-hour × 7-day rhythm
+/// profile. Each 15-min slice contributes its `active_seconds` to the matching
+/// local hour and weekday (derived via chrono Local). When `history` entries
+/// carry a score for a slice's date, that score is averaged into the bucket so
+/// the heatmap can color "high quality" hours differently from merely "busy" ones.
+pub fn build_rhythm_profile(
+    book: &WorkLogBook,
+    history: &[DailyWorkAssessmentSummary],
+) -> RhythmProfile {
+    // Build a date -> score lookup once for cheap per-slice joins.
+    let score_by_date: std::collections::HashMap<&str, u32> = history
+        .iter()
+        .filter(|summary| summary.has_data)
+        .map(|summary| (summary.date.as_str(), summary.score))
+        .collect();
+
+    let mut hours: [RhythmBucket; 24] = std::array::from_fn(|i| RhythmBucket {
+        index: i as u8,
+        ..Default::default()
+    });
+    let mut weekdays: [RhythmBucket; 7] = std::array::from_fn(|i| RhythmBucket {
+        index: i as u8,
+        ..Default::default()
+    });
+
+    // Track (sum_score, scored_day_count, distinct_day_set) per bucket to compute
+    // a correct average later.
+    let mut hour_score_sum = [0u64; 24];
+    let mut hour_scored_days = [0u32; 24];
+    let mut weekday_score_sum = [0u64; 7];
+    let mut weekday_scored_days = [0u32; 7];
+    // Distinct days per bucket — approximated by counting a day once we see it.
+    use std::collections::HashSet;
+    let mut hour_days: [HashSet<String>; 24] = std::array::from_fn(|_| HashSet::new());
+    let mut weekday_days: [HashSet<String>; 7] = std::array::from_fn(|_| HashSet::new());
+
+    for (date, entry) in &book.entries {
+        for slice in &entry.time_slices {
+            let Some(local) = Local.timestamp_millis_opt(slice.start_timestamp).single() else {
+                continue;
+            };
+            let hour = local.hour() as usize;
+            let weekday = (local.weekday().num_days_from_monday()) as usize;
+
+            hours[hour].active_seconds = hours[hour]
+                .active_seconds
+                .saturating_add(slice.active_seconds);
+            weekdays[weekday].active_seconds = weekdays[weekday]
+                .active_seconds
+                .saturating_add(slice.active_seconds);
+
+            hour_days[hour].insert(date.clone());
+            weekday_days[weekday].insert(date.clone());
+
+            if let Some(score) = score_by_date.get(date.as_str()) {
+                hour_score_sum[hour] += *score as u64;
+                hour_scored_days[hour] += 1;
+                weekday_score_sum[weekday] += *score as u64;
+                weekday_scored_days[weekday] += 1;
+            }
+        }
+    }
+
+    for i in 0..24 {
+        hours[i].sample_days = hour_days[i].len() as u32;
+        hours[i].avg_focus_score = if hour_scored_days[i] > 0 {
+            hour_score_sum[i] as f64 / hour_scored_days[i] as f64
+        } else {
+            0.0
+        };
+    }
+    for i in 0..7 {
+        weekdays[i].sample_days = weekday_days[i].len() as u32;
+        weekdays[i].avg_focus_score = if weekday_scored_days[i] > 0 {
+            weekday_score_sum[i] as f64 / weekday_scored_days[i] as f64
+        } else {
+            0.0
+        };
+    }
+
+    // Peak hours: rank by a blend of activity volume and focus score.
+    let mut ranked: Vec<(usize, f64)> = (0..24)
+        .map(|i| {
+            let activity = hours[i].active_seconds as f64;
+            let focus = hours[i].avg_focus_score;
+            (i, activity.max(1.0).ln() + focus * 0.05)
+        })
+        .collect();
+    ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    let peak_hours: Vec<u8> = ranked.iter().take(3).map(|(i, _)| *i as u8).collect();
+
+    let summary = build_rhythm_summary(&hours, &peak_hours);
+
+    RhythmProfile {
+        hour_buckets: hours.to_vec(),
+        weekday_buckets: weekdays.to_vec(),
+        peak_hours,
+        summary,
+    }
+}
+
+fn build_rhythm_summary(hours: &[RhythmBucket], peak_hours: &[u8]) -> String {
+    if peak_hours.is_empty() || hours.iter().all(|h| h.active_seconds == 0) {
+        return "还没有足够的数据来识别你的节律，多用几天就能看到规律啦。".to_string();
+    }
+    let labels: Vec<String> = peak_hours
+        .iter()
+        .map(|h| format!("{:02}:00", h))
+        .collect();
+    format!(
+        "你的高效时段集中在 {}。在这些时段安排重要任务，CoreCat 会陪你一起发力。",
+        labels.join("、")
+    )
+}
+
 pub fn today_key() -> String {
     Local::now().format("%Y-%m-%d").to_string()
 }
@@ -2942,6 +3082,57 @@ pub fn current_timestamp_ms() -> i64 {
 #[cfg(test)]
 mod assessment_tests {
     use super::*;
+    use chrono::TimeZone;
+
+    #[test]
+    fn rhythm_profile_aggregates_active_seconds_by_local_hour() {
+        // Two slices on the same day at 10:00 and 10:15 local → both land in hour 10.
+        let base = Local
+            .timestamp_millis_opt(0)
+            .single()
+            .unwrap()
+            .date()
+            .and_hms_opt(10, 0, 0)
+            .unwrap();
+        let day = base.format("%Y-%m-%d").to_string();
+        let t1 = Local
+            .from_local_datetime(&base.naive_local())
+            .single()
+            .unwrap()
+            .timestamp_millis();
+        let t2 = t1 + WORK_LOG_TIME_SLICE_MS as i64;
+
+        let mut book = WorkLogBook::default();
+        let entry = WorkLogEntry {
+            date: day.clone(),
+            ..Default::default()
+        };
+        book.entries.insert(day, entry);
+        let entry = book.entries.values_mut().next().unwrap();
+        for t in [t1, t2] {
+            let slice = WorkLogTimeSlice {
+                start_timestamp: t,
+                end_timestamp: t + WORK_LOG_TIME_SLICE_MS as i64,
+                active_seconds: 600,
+                ..Default::default()
+            };
+            entry.time_slices.push(slice);
+        }
+
+        let profile = build_rhythm_profile(&book, &[]);
+        let hour10 = &profile.hour_buckets[10];
+        assert_eq!(hour10.active_seconds, 1200);
+        assert_eq!(hour10.sample_days, 1);
+        assert!(profile.peak_hours.contains(&10));
+    }
+
+    #[test]
+    fn rhythm_profile_handles_empty_work_log() {
+        let book = WorkLogBook::default();
+        let profile = build_rhythm_profile(&book, &[]);
+        assert!(profile.hour_buckets.iter().all(|h| h.active_seconds == 0));
+        assert!(profile.peak_hours.is_empty() || profile.hour_buckets.iter().all(|h| h.active_seconds == 0));
+    }
 
     fn test_rarity(tier: &str) -> WorkCardRarity {
         WorkCardRarity {
