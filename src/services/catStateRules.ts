@@ -118,10 +118,18 @@ export function catStateSeverity(state: CatState) {
       return 80;
     case "MemoryCrowded":
       return 70;
+    case "DeepWork":
+      return 60;
     case "RepairLight":
       return 50;
+    case "NeedsBreak":
+      return 46;
     case "Sleep":
       return 40;
+    case "Fatigued":
+      return 36;
+    case "Distracted":
+      return 34;
     case "DataSorting":
       return 30;
     case "Celebrate":
@@ -134,7 +142,7 @@ export function catStateSeverity(state: CatState) {
   }
 }
 
-export function messageForCatState(state: CatState) {
+export function messageForCatState(state: CatState): string {
   switch (state) {
     case "Idle":
       return "CoreCat 正在待命。";
@@ -154,7 +162,17 @@ export function messageForCatState(state: CatState) {
       return "CoreCat 正在响应你的操作。";
     case "Celebrate":
       return "清理完成，工坊状态良好。";
+    case "Fatigued":
+      return "连续工作很久啦，CoreCat 也想歇一会儿。";
+    case "NeedsBreak":
+      return "久坐提醒：起来活动一下，喝口水吧。";
+    case "DeepWork":
+      return "专注仪式进行中，CoreCat 陪你一起埋头干活。";
+    case "Distracted":
+      return "好像走神了？深呼吸，回到任务上来吧。";
     case "Hidden":
+      return "";
+    default:
       return "";
   }
 }
